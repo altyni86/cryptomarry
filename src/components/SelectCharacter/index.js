@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
-import { CONTRACT_ADDRESS, transformCharacterData } from '../../constants';
+import { transformCharacterData } from '../../constants';
 import myEpicGame from '../../utils/marriages.json';
 
 import {
@@ -18,15 +18,15 @@ import {
   import { Formik, Form, Field} from 'formik';
 
 
-const SelectCharacter = ({currentAccount,setCharacterNFT}) => {
+const SelectCharacter = ({gameContract, currentAccount,setCharacterNFT}) => {
   
-  const [gameContract, setgameContract] = useState(null);
+  //const [gameContract, setgameContract] = useState(null);
   const [address, setaddress] = useState("");
   const [stake, setstake] = useState("");
   const [gift, setgift] = useState("0");
   const [message, setMessage] = useState("");
  
-
+/*
   // UseEffect
   useEffect(() => {
     const { ethereum } = window;
@@ -35,7 +35,7 @@ const SelectCharacter = ({currentAccount,setCharacterNFT}) => {
       const provider = new ethers.providers.Web3Provider(ethereum);
       const signer = provider.getSigner();
       const gameContract = new ethers.Contract(
-        CONTRACT_ADDRESS,
+        ContractAddress,
         myEpicGame.abi,
         signer
       )
@@ -45,10 +45,10 @@ const SelectCharacter = ({currentAccount,setCharacterNFT}) => {
     } else {
       console.log('Ethereum object not found');
     }
-  }, []);
+  }, [ContractAddress]);
 
 
-
+*/
 
   const wave = async () => {
     try {

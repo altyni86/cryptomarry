@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
-import { CONTRACT_ADDRESS, transformCharacterData } from '../../constants';
+import {transformCharacterData } from '../../constants';
 import myEpicGame from '../../utils/marriages.json';
 import { SimpleGrid,
     Box,
@@ -43,11 +43,11 @@ import { SimpleGrid,
 
 import Confetti from 'react-confetti'
 
-const Execute = ({ currentAccount, characterNFT,setCharacterNFT }) => {
+const Execute = ({gameContract, currentAccount, characterNFT,setCharacterNFT }) => {
 
 
 // State
-const [gameContract, setGameContract] = useState(null);
+//const [gameContract, setGameContract] = useState(null);
 const [message, setMessage] = useState("");
 const [value, setvalue] = useState("");
 const [divresponse, setdivresponse] = useState(null);
@@ -80,7 +80,7 @@ const format = (val) => `Ξ` + val
 const parse = (val) => val.replace(/^\Ξ/, '')
 
 
-// UseEffects
+/* UseEffects
 useEffect(() => {
     const { ethereum } = window;
 
@@ -88,7 +88,7 @@ useEffect(() => {
       const provider = new ethers.providers.Web3Provider(ethereum);
       const signer = provider.getSigner();
       const gameContract = new ethers.Contract(
-        CONTRACT_ADDRESS,
+        ContractAddress,
         myEpicGame.abi,
         signer
       );
@@ -97,9 +97,9 @@ useEffect(() => {
     } else {
       console.log('Ethereum object not found');
     }
-  }, []);
+  }, [ContractAddress]);
 
-
+*/
   useEffect(() => {
 
     const onNewWave = async (id, waver, proposed, sender, message, time,vid) => {
@@ -119,7 +119,7 @@ useEffect(() => {
       }
 
 
-
+/*
     const onCertificateMint = async (waver, proposed, tokenId) => {
       console.log("Incoming message with:",waver, proposed,tokenId);
       if (gameContract && waver.toUpperCase() === currentAccount.toUpperCase()) {
@@ -133,21 +133,20 @@ useEffect(() => {
           window.location.reload(false);}
       } else {
         console.log('Other users event.');}
-    }
-
+    }*/
    
 //Listeners
     if (gameContract) {
       gameContract.on('NewWave', onNewWave);
    
-      gameContract.on('CertificateNFTMinted', onCertificateMint);}
-      
+      //gameContract.on('CertificateNFTMinted', onCertificateMint);
+    }
 //Listenersoff
     return () => {
       if (gameContract) {
         gameContract.off('NewWave', onNewWave);
         
-        gameContract.off('CertificateNFTMinted', onCertificateMint);
+       // gameContract.off('CertificateNFTMinted', onCertificateMint);
       }
     };
 // eslint-disable-next-line 
@@ -162,7 +161,7 @@ useEffect(() => {
       console.log('Executing marriage contract...')
 
         const value = ((Number(characterNFT.stake) + Number(characterNFT.gift))*1.011).toString()
-        const waveTxn = await gameContract.execute( {value: ethers.utils.parseUnits(value, 'ether'),gasPrice: ethers.utils.parseUnits('100', 'gwei'), gasLimit: 6000000});
+        const waveTxn = await gameContract.execute( {value: ethers.utils.parseUnits(value, 'ether'),gasPrice: ethers.utils.parseUnits('100', 'gwei'), gasLimit: 200000});
         console.log("Mining...", waveTxn.hash);
 
         await waveTxn.wait();
@@ -178,7 +177,7 @@ useEffect(() => {
     setIsLoading(true);
     try {
       const value2 = (Number(value)*1.01).toString()
-        const waveTxn = await gameContract.addstake( {value: ethers.utils.parseUnits(value2, 'ether'),gasPrice: ethers.utils.parseUnits('100', 'gwei'), gasLimit: 1000000});
+        const waveTxn = await gameContract.addstake( {value: ethers.utils.parseUnits(value2, 'ether'),gasPrice: ethers.utils.parseUnits('100', 'gwei'), gasLimit: 100000});
         console.log("Mining...", waveTxn.hash);
 
         await waveTxn.wait();

@@ -6,13 +6,18 @@ import { ColorModeSwitcher } from './ColorModeSwitcher';
 import { ethers } from 'ethers';
 import { CONTRACT_ADDRESS, transformCharacterData } from './constants';
 import myEpicGame from './utils/marriages.json';
-import Execute from './components/Execute';
 
-import { Logo } from './components/Logo';
+
+
 //Components
 import Identicon from "./components/identicon";
+import Blur from "./components/Blur";
 import SelectCharacter from "./components/SelectCharacter";
 import Arena from './components/Arena';
+import { Logo } from './components/Logo';
+import Execute from './components/Execute';
+import WrongNetwork from './components/WrongNetwork';
+
 
 import {
   ChakraProvider,
@@ -22,8 +27,6 @@ import {
   VStack,
   HStack,
   Flex,
-  Spacer,
-
   Grid,
   theme,
   GridItem,
@@ -67,10 +70,7 @@ import {
  
   Heading,
   Center,
-  createIcon,
 
-
- 
   IconButton,
   
   Stack,
@@ -80,7 +80,6 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-  Avatar,
   useColorModeValue,
   useBreakpointValue,
   Container,
@@ -89,9 +88,7 @@ import {
   AccordionButton,
   AccordionPanel,
   AccordionIcon,
-  
- 
-  
+  Select
   
 } from '@chakra-ui/react';
 
@@ -108,9 +105,6 @@ import { useTable, useSortBy } from 'react-table'
 import { FaGithub, FaTwitter, FaYoutube } from 'react-icons/fa';
 
 
-// Constants
-//const TWITTER_HANDLE = '0xaltyni';
-//const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 
 
 function App() {
@@ -127,8 +121,16 @@ const [value, setvalue] = useState("");
 const [message, setMessage] = useState("");
 const [marriedto, setmarriedto] = useState("");
 const [imageNFT,setimageNFT] = useState([]);
+const [wrongnetwork,setwrongnetwork] = useState(false);
+const [ContractAddress, setContractAddress] = useState("")
 
-const { isOpen: isMobileNavOpen, onToggle: onToggle2  } = useDisclosure();
+const [chainID, setchainID] = useState('')
+
+const [currency, setcurrency] = useState('')
+//const [networkParams, setnetworkParams] = useState ([])
+
+
+//const { isOpen: isMobileNavOpen, onToggle: onToggle2  } = useDisclosure();
 const { isOpenother, onToggle } = useDisclosure();
 
 
@@ -141,6 +143,8 @@ const format = (val) => `Ξ` + val;
 const parse = (val) => val.replace(/^\Ξ/, '')
 
 const { isOpen, onOpen, onClose } = useDisclosure()
+
+const supportedNetworks = ["0x1","0x4","0x7a69","0x89"]
 
 
 const finalRef = React.useRef()
@@ -194,10 +198,9 @@ const columns = React.useMemo(
   [txarray],
 )
 
-
-
 const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
     useTable({ columns, data }, useSortBy)
+
 
 
     // World of connections to wallets
@@ -217,7 +220,21 @@ const checkIfWalletIsConnected = async () => {
         const account = accounts[0];
         console.log('Found an authorized account:', account);
         setCurrentAccount(account);
+
+        let chainId = await ethereum.request({ method: 'eth_chainId' });
         
+        console.log("Connected to chain " + chainId);
+        
+        if (!supportedNetworks.includes(chainId)) {
+          setwrongnetwork(true);
+          alert("Please connect to a supported network in the dropdown menu or in your wallet.");
+          setContractAddress('')
+
+        } else {
+          setchainID(chainId);
+          OpenContract(chainId);
+          setwrongnetwork(false);
+        }
         
       } else {
         console.log('No authorized account found');
@@ -227,6 +244,80 @@ const checkIfWalletIsConnected = async () => {
     console.log(error);
   }
 };
+
+//Important update Contract Addresses here for each network
+const OpenContract = async (chainId) => {
+  if (chainId === "0x7a69") {
+    setContractAddress('0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0')
+    setcurrency('lETH')
+    
+  }else if (chainId === "0x89") {
+    setContractAddress('0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0')
+    setcurrency('MATIC')
+  } else if (chainId === "0x1") {
+    setContractAddress('0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0')
+    setcurrency('ETH')
+
+  } else if (chainId === "0x4") {
+    setContractAddress('0x5790196def19E1f17fdE23893e4B4c9708b86ce9')
+    setcurrency('rETH')
+} 
+}
+
+
+
+const setchainParams = (hexChainID) => {
+
+console.log("In function", hexChainID )
+
+try {
+  if (hexChainID === "0x7a69") {
+    window.ethereum.request({
+      method: "wallet_addEthereumChain",
+      params: [{
+          chainId: "0x7a69",
+          rpcUrls: ["https://127.0.0.1:8545"],
+          chainName: "LocalHost",
+          nativeCurrency: {
+              name: "CryptoMarry",
+              symbol: "CMY",
+              decimals: 18
+          },
+          blockExplorerUrls: ["https://polygonscan.com/"]
+      }]
+  });
+
+  }else if (hexChainID === "0x89") {
+    window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{
+          chainId: "0x89"
+          }],
+  });
+  } else if (hexChainID === "0x1") {
+    window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{
+          chainId: "0x1"
+          }],
+  });
+
+  } else if (hexChainID === "0x4") {
+ 
+    window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{
+          chainId: "0x4"
+          }],
+  });    
+}} catch (error) {
+  alert("Connect to a Metamask first")
+}
+
+}
+
+
+
 
 
 const connectWalletAction = async () => {
@@ -241,27 +332,65 @@ const connectWalletAction = async () => {
       method: 'eth_requestAccounts',
     });
     console.log('Connected', accounts[0]);
+    
+    let chainId = await ethereum.request({ method: 'eth_chainId' });
+    console.log("2Connected to chain " + chainId);
+    
     setCurrentAccount(accounts[0]);
+    window.location.reload()
+    
+    
+   /*
+    const hexChainID = "0x"+chainID.toString(16);
+   
+    console.log("2Selected HEX chain " + hexChainID); 
+
+    if (chainId !== hexChainID) {
+     await setwrongnetwork(true);
+     console.log("Is Wrong network" + wrongnetwork); 
+     alert("You are NOT connected to the Selected Network");
+    } else if (chainId === hexChainID) {
+      OpenContract(chainId) 
+    }
+    */
+
   } catch (error) {
     console.log(error);
   }
 };
 
+useEffect(() => {
+  setchainParams(chainID);
+
+}, [chainID]);
+
 
 useEffect(() => {
+  try {
+  const { ethereum } = window;
+  ethereum.on('chainChanged', (chainId) => {
+    // Handle the new chain.
+    // Correctly handling chain changes can be complicated.
+    // We recommend reloading the page unless you have good reason not to.
+    window.location.reload();});
+  } catch (error) {
+      console.log(error);
+    }
+  
   checkIfWalletIsConnected();
 
 }, []);
 
-// UseEffect
+// UseEffects
 useEffect(() => {
   const { ethereum } = window;
 
-  if (ethereum) {
+  if (ethereum && ContractAddress !=='' ) {
+    console.log("Your Contract address is: ", ContractAddress)
     const provider = new ethers.providers.Web3Provider(ethereum);
     const signer = provider.getSigner();
     const gameContract = new ethers.Contract(
-      CONTRACT_ADDRESS,
+      ContractAddress,
       myEpicGame.abi,
       signer
     );
@@ -277,7 +406,13 @@ useEffect(() => {
     console.log('Contract object not found');
   }
   // eslint-disable-next-line
-}, [])
+}, [ContractAddress])
+
+
+
+
+//Need to build a network selector
+
 
 
  /*
@@ -329,7 +464,7 @@ useEffect(() => {
   }
   }
 
-  if (currentAccount) {
+  if (currentAccount && gameContract) {
     console.log('CurrentAccount:', currentAccount);
     fetchNFTMetadata();
     fetchProposedtodata(); 
@@ -337,7 +472,7 @@ useEffect(() => {
   }
 
   // eslint-disable-next-line 
-}, [setfamilyStats, currentAccount]);
+}, [gameContract, setfamilyStats, currentAccount]);
 
 
 useEffect(() => {
@@ -385,7 +520,7 @@ if (gameContract && sender.toUpperCase() === currentAccount.toUpperCase()) {
     setfamilyStats(transformCharacterData(txn));
     toast({
       title: 'Family Stake update',
-      description: "Your ETH has been sent",
+      description: "Your deposit has been sent",
       status: 'success',
       duration: 9000,
       isClosable: true,
@@ -465,7 +600,7 @@ const FamilyEthBalance = async () => {
 
 // Render Methods
 const renderContent = () => {
-  if (!currentAccount) {
+  if (!currentAccount && wrongnetwork === false ) {
     return (
          
          <Button
@@ -483,7 +618,27 @@ const renderContent = () => {
        </Button>
     );
   
-} else {
+} else if (wrongnetwork === true) {
+
+  return (   
+    <Button
+    display={{ base: 'none', md: 'inline-flex' }}
+    fontSize={'sm'}
+    fontWeight={600}
+    color={'white'}
+    bg={'red.400'}
+    href={'#'}
+    _hover={{
+      bg: 'pink.300',
+    }}>
+    Wrong Network
+  </Button>
+);
+
+} 
+
+
+else {
  return (
    
 <HStack>
@@ -508,7 +663,7 @@ const renderContent = () => {
         {parseFloat(familyBudget).toFixed(3)}
         </Text>
         <Text color="white" fontSize="md">
-        ETH
+        {currency}
         </Text>
 
   </HStack>
@@ -532,7 +687,7 @@ const renderContent = () => {
 </HStack>) :null}
 
 
-<Box
+{ balanceETH ? (<Box
   display="flex"
   alignItems="center"
   background="gray.600"
@@ -546,11 +701,11 @@ const renderContent = () => {
         {parseFloat(balanceETH).toFixed(3)} 
         </Text>
         <Text color="white" fontSize="md">
-        ETH
+      {currency}
         </Text>
   </HStack>
 </Box>
-</Box>
+</Box>):null}
 <Box>
 <Menu>
   <MenuButton 
@@ -584,7 +739,7 @@ const renderContent = () => {
       <Modal finalFocusRef={finalRef} isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Enter ETH value</ModalHeader>
+          <ModalHeader>Enter {currency} value</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
 
@@ -702,7 +857,7 @@ const renderContent = () => {
        
        </MenuItem>
        
-       <MenuItem onClick={onOpen4}> See your onchain NFT
+       {familyStats.ProposalStatus === 4 ? <MenuItem onClick={onOpen4}> See your onchain NFT
        
        <Modal finalFocusRef={finalRef} isOpen={isOpen4} onClose={onClose4}>
         <ModalOverlay />
@@ -723,7 +878,7 @@ const renderContent = () => {
           </ModalFooter>
         </ModalContent>
       </Modal> 
-       </MenuItem>
+       </MenuItem> : null}
 
 
     
@@ -898,7 +1053,6 @@ const renderContent2 = () => {
             </Text>{' '}
             and Get {' '}
             <Text
-              as={'span'}
               bgGradient="linear(to-r, red.400,pink.400)"
               bgClip="text">
               NFT Certificate.
@@ -913,7 +1067,7 @@ const renderContent2 = () => {
               CryptoMarry
             </Text> {' '}
     is more than a registration service, it is a platform that makes partners' committment to marriage real.
-     Staked ETHs are split between sides upon divorce. No lawyers needed.  
+     Staked ETHs (or other currencies) are split between sides upon divorce. No lawyers needed.  
 
     </Text>
     <Center>
@@ -994,7 +1148,7 @@ const renderContent2 = () => {
             </Text> {' '}
         </Heading>
         <Text color={'gray.500'} maxW={'3xl'}>
-          Propose your loved one and demonstrate your strong commitment to the partnership by staking ETHs and minting a NFT Certificate. {' '}
+          Propose your loved one and demonstrate your strong commitment to the partnership by staking ETHs (or other currencies) and minting a NFT Certificate. {' '}
           <Text
               as={'span'}
               bgGradient="linear(to-r, red.400,pink.400)"
@@ -1004,7 +1158,12 @@ const renderContent2 = () => {
             </Text> {' '}
            will make sure that your promises are delivered.  
         </Text>
-        
+        <Flex
+    flex={1}
+    justify={'center'}
+    align={'center'}
+    position={'relative'}
+    w={'full'}>
         <Stack spacing={6} direction={'row'}>
           
         <Box
@@ -1030,7 +1189,7 @@ const renderContent2 = () => {
             pos: 'absolute',
             top: 5,
             left: 0,
-            backgroundImage: `url(${'https://images.unsplash.com/photo-1534515729281-5ddf2c470538?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1035&q=80'})`,
+            backgroundImage: `url(${'https://images.unsplash.com/photo-1605101943206-05c8f4e64598?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2071&q=80'})`,
             filter: 'blur(15px)',
             zIndex: -1,
           }}
@@ -1045,7 +1204,7 @@ const renderContent2 = () => {
             width={282}
             objectFit={'cover'}
             src={
-              'https://images.unsplash.com/photo-1534515729281-5ddf2c470538?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1035&q=80'
+              'https://images.unsplash.com/photo-1605101943206-05c8f4e64598?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2071&q=80'
             }
           />
         </Box>
@@ -1065,7 +1224,7 @@ const renderContent2 = () => {
           </Heading>
           <Stack direction={'row'} align={'center'}>
             <Text fontWeight={300} fontSize={'1xl'}>
-            Within the proposal, indicate partner's wallet address, the amount of ETH you are willing to stake. You can also send a Gift in ETH as a part of the deal.   
+            Within the proposal, indicate partner's wallet address, the amount of ETH (or othe currencies) you are willing to stake. You can also send a Gift in ETH (or other currencies) as a part of the deal.   
             </Text>
           </Stack>
         </Stack>
@@ -1094,7 +1253,7 @@ const renderContent2 = () => {
             pos: 'absolute',
             top: 5,
             left: 0,
-            backgroundImage: `url(${'https://images.unsplash.com/photo-1515255999692-f4f725690af8?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80'})`,
+            backgroundImage: `url(${'https://images.unsplash.com/photo-1553915632-175f60dd8e36?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80'})`,
             filter: 'blur(15px)',
             zIndex: -1,
           }}
@@ -1109,7 +1268,7 @@ const renderContent2 = () => {
             width={282}
             objectFit={'cover'}
             src={
-              'https://images.unsplash.com/photo-1515255999692-f4f725690af8?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80'
+              'https://images.unsplash.com/photo-1553915632-175f60dd8e36?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80'
             }
           />
         </Box>
@@ -1157,7 +1316,7 @@ const renderContent2 = () => {
             pos: 'absolute',
             top: 5,
             left: 0,
-            backgroundImage: `url(${'https://images.unsplash.com/photo-1610624764045-5255643109c6?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80'})`,
+            backgroundImage: `url(${'https://images.unsplash.com/photo-1496275068113-fff8c90750d1?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80'})`,
             filter: 'blur(15px)',
             zIndex: -1,
           }}
@@ -1172,7 +1331,7 @@ const renderContent2 = () => {
             width={282}
             objectFit={'cover'}
             src={
-              'https://images.unsplash.com/photo-1610624764045-5255643109c6?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80'
+              'https://images.unsplash.com/photo-1496275068113-fff8c90750d1?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80'
             }
           />
         </Box>
@@ -1186,7 +1345,7 @@ const renderContent2 = () => {
               bgGradient="linear(to-r, red.400,pink.400)"
               bgClip="text"
               fontWeight='bold'>
-              Strengthen your Marriage 
+              Build a Family 
             </Text>  
           </Heading>
           <Stack direction={'row'} align={'center'}>
@@ -1198,6 +1357,7 @@ const renderContent2 = () => {
       </Box>
 
         </Stack>
+        </Flex>   
 </Stack>
     </Container>
     <Container maxW={'5xl'}>
@@ -1230,13 +1390,13 @@ const renderContent2 = () => {
     <h2>
       <AccordionButton>
         <Box flex='1' textAlign='left'>
-          Should I propose/marry in Real Life?
+          Is CryptoMarry substitute for IRL experiences?
         </Box>
         <AccordionIcon />
       </AccordionButton>
     </h2>
     <AccordionPanel pb={4}>
-     Absolutely. CryptoMarry is not substitute for IRL experiences. But the platform provides a number of instruments that are very difficult to arrange in IRL.
+     Absolutely not. CryptoMarry is not substitute for IRL experiences. But the platform provides a number of instruments that are very difficult to arrange in IRL.
      For example, proposals without Skin in the Game (e.g ETH Staking) are not always credible. The one who proposes through CryptoMarry, can make credible committment to the Partnership.
      Most importantly, if couples decide to divorce, it can be quite difficult to fairly split joint assets (sometimes legal procedures are unavoidable). But with CryptoMarry, Staked resources are split instantly upon divorce.     
 
@@ -1247,7 +1407,7 @@ const renderContent2 = () => {
     <h2>
       <AccordionButton>
         <Box flex='1' textAlign='left'>
-          Are staked (deposited) ETH safe? 
+          Are staked (deposited) ETH (or other currencies) safe? 
         </Box>
         <AccordionIcon />
       </AccordionButton>
@@ -1281,7 +1441,7 @@ const renderContent2 = () => {
     <h2>
       <AccordionButton>
         <Box flex='1' textAlign='left'>
-          Is it possible to withdraw Staked ETH?
+          Is it possible to withdraw Staked ETH (or other currencies)?
         </Box>
         <AccordionIcon />
       </AccordionButton>
@@ -1317,7 +1477,7 @@ const renderContent2 = () => {
     </h2>
     <AccordionPanel pb={4}>
    There are two types of fees. First, Developer Community fee is 1% from all transactions. There is also an Ethereum fee. 
-   Ethereum transaction fees may vary depending on network congestion. It should be noted that transaction fee form Minting NFT Certificate may cost up to 0.6 ETHs. This is because all data in stored on chain. If you are looking for more affordable options, CryptoMarry is available in Polygon Chain. 
+   Ethereum transaction fees may vary depending on network congestion. It should be noted that transaction fee form Minting NFT Certificate may cost up to 0.6 ETHs. This is because all data in stored on chain. If you are looking for more affordable options, CryptoMarry is available on Polygon Chain. 
      </AccordionPanel>
   </AccordionItem>
   <AccordionItem>
@@ -1357,24 +1517,70 @@ const renderContent2 = () => {
 
 
 
-    );
-  } else if (currentAccount && !characterNFT &&!userBeenProposed) {
-    return <SelectCharacter setCharacterNFT={setCharacterNFT} currentAccount={currentAccount} />;	
+    );}else if (currentAccount && wrongnetwork === true) { 
+     return(<WrongNetwork/>)
+    
+    
+    
+
+  } else if (currentAccount && gameContract && wrongnetwork === false && !characterNFT &&!userBeenProposed) {
+    return (
+      <Container maxW={'5xl'}>
+        <Blur
+        position={'absolute'}
+        top={-10}
+        left={-10}
+        style={{ filter: 'blur(80px)' }}
+      />
+        <Stack
+        textAlign={'center'}
+        align={'center'}
+        spacing={{ base: 8, md: 10 }}
+        py={{ base: 20, md: 28 }}>
+    <SelectCharacter gameContract={gameContract} setCharacterNFT={setCharacterNFT} currentAccount={currentAccount} 
+    />
+    </Stack>
+    </Container>);	
 	
   } else if (currentAccount && userBeenProposed && !characterNFT ) {
-    return <Arena Provider = {Provider} currentAccount={currentAccount} userBeenProposed={userBeenProposed} setuserBeenProposed={setuserBeenProposed}/>;
+    return (
+      <Container maxW={'5xl'}>
+        <Blur
+        position={'absolute'}
+        top={-10}
+        left={-10}
+        style={{ filter: 'blur(80px)' }}
+      />
+      <Stack
+      textAlign={'center'}
+      align={'center'}
+      spacing={{ base: 8, md: 10 }}
+      py={{ base: 20, md: 28 }}>
+    <Arena gameContract={gameContract}  Provider = {Provider} currentAccount={currentAccount} userBeenProposed={userBeenProposed} setuserBeenProposed={setuserBeenProposed}/>
+    </Stack>
+    </Container>
+      );
   } else if (currentAccount && characterNFT && !userBeenProposed  ) {
-    return <Execute currentAccount={currentAccount} characterNFT={characterNFT} setCharacterNFT={setCharacterNFT} />;
+    return (
+      <Container maxW={'5xl'}>
+        <Blur
+        position={'absolute'}
+        top={-10}
+        left={-10}
+        style={{ filter: 'blur(80px)' }}
+      />
+      <Stack
+      textAlign={'center'}
+      align={'center'}
+      spacing={{ base: 8, md: 10 }}
+      py={{ base: 20, md: 28 }}>
+    <Execute gameContract={gameContract} currentAccount={currentAccount} characterNFT={characterNFT} setCharacterNFT={setCharacterNFT} />
+    </Stack>
+    </Container>
+      );
   } 
 
 }
-
-
-
-
-
-
-
 
 
 
@@ -1571,7 +1777,6 @@ const SocialButton = ({
   return (
     <ChakraProvider theme={theme}>
 
-
 <Grid
 
   templateRows='repeat(1, 1fr)'
@@ -1606,7 +1811,7 @@ const SocialButton = ({
           />
         </Flex>
         <Flex flex={{ base: 1 }} justify={{ base: 'center', md: 'start' }}>
-        <Link href={'/'} passHref>
+        <Link href={'/'}>
         <Stack
                 as={'a'}
                 direction={'row'}
@@ -1627,7 +1832,15 @@ const SocialButton = ({
             </Link>
 
           <Flex display={{ base: 'none', md: 'flex' }} ml={10}>
-          
+          <Select value={chainID} 
+          onChange={e => setchainID(e.target.value)}
+          borderColor='pink'
+          border='2px'>
+                <option value='0x1'>Ethereum</option>
+                <option value='0x4'>Rinkeby</option>
+                <option value='0x89' >Polygon</option>
+                <option value='0x7a69'>Localhost</option>
+          </Select>
           
            <DesktopNav />
           </Flex>
@@ -1641,6 +1854,8 @@ const SocialButton = ({
          
          {renderContent()}
           <ColorModeSwitcher justifySelf="flex-end" />
+
+          
         
         </Stack>
       </Flex>
@@ -1704,38 +1919,11 @@ const SocialButton = ({
 
 }
 
-/*
-  <Blur
-        position={'absolute'}
-        top={-10}
-        left={-10}
-        style={{ filter: 'blur(80px)' }}
-      />
-*/
+
 
 export default App;
 
-export const Blur = (props: IconProps) => {
-  return (
-    <Icon
-      width={useBreakpointValue({ base: '100%', md: '40vw', lg: '30vw' })}
-      zIndex={useBreakpointValue({ base: -1, md: -1, lg: 0 })}
-      height="800px"
-      viewBox="0 0 528 800"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}>
-      <circle cx="71" cy="61" r="111" fill="#F56565" />
-      <circle cx="244" cy="106" r="139" fill="#ED64A6" />
-      <circle cy="291" r="139" fill="#ED64A6" />
-      <circle cx="80.5" cy="189.5" r="101.5" fill="#ED8936" />
-      <circle cx="196.5" cy="317.5" r="101.5" fill="#ECC94B" />
-      <circle cx="70.5" cy="458.5" r="101.5" fill="#48BB78" />
-      <circle cx="426.5" cy="-0.5" r="101.5" fill="#4299E1" />
-    </Icon>
-  );
 
-};
 
 
 export const Blob = (props: IconProps) => {
