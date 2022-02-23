@@ -9,10 +9,10 @@ const transformCharacterData = (characterData) => {
         waver: characterData.waver,
         proposed: characterData.proposed,
         ProposalStatus: characterData.ProposalStatus,
-        DivorceStatus: characterData.DivorceStatus,
         stake: characterData.stake.toNumber()/1000000000,
         gift: characterData.gift.toNumber()/1000000000, 
         FamilyBudget:characterData.FamilyBudget, 
+        marryDate: characterData.marryDate
     };
   };
   
