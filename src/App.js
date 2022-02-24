@@ -4,8 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { ColorModeSwitcher } from './ColorModeSwitcher';
 //import { Logo } from './Logo';
 import { ethers } from 'ethers';
-import { CONTRACT_ADDRESS, transformCharacterData } from './constants';
+import { transformCharacterData } from './constants';
 import myEpicGame from './utils/marriages.json';
+
+import { 
+  FcAbout,
+} from 'react-icons/fc';
 
 
 
@@ -16,6 +20,8 @@ import SelectCharacter from "./components/SelectCharacter";
 import Arena from './components/Arena';
 import { Logo } from './components/Logo';
 import Execute from './components/Execute';
+import NFTPricing from './components/NFTMenu';
+
 import WrongNetwork from './components/WrongNetwork';
 
 
@@ -23,7 +29,6 @@ import {
   ChakraProvider,
   Box,
   Text,
- 
   VStack,
   HStack,
   Flex,
@@ -60,14 +65,15 @@ import {
   Th,
   Td,
   chakra,
-  Textarea,
+  
   createStandaloneToast,
   VisuallyHidden,
-
+  Spinner,
+ 
   Image,
   IconProps,
   Icon,
- 
+  Tooltip,
   Heading,
   Center,
 
@@ -81,29 +87,42 @@ import {
   PopoverTrigger,
   PopoverContent,
   useColorModeValue,
-  useBreakpointValue,
+
   Container,
   Accordion,
   AccordionItem,
   AccordionButton,
   AccordionPanel,
   AccordionIcon,
-  Select
+  Select,
+  FormControl,
+    FormLabel,
+    FormErrorMessage,
+    Input,
+
+  Tabs, 
+  TabList, 
+  TabPanels, 
+  Tab, 
+  TabPanel 
+
   
 } from '@chakra-ui/react';
+
+import { Formik, Form, Field} from 'formik';
 
 import {
   HamburgerIcon,
   CloseIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  ExternalLinkIcon
 } from '@chakra-ui/icons';
 
 import { TriangleDownIcon, TriangleUpIcon } from '@chakra-ui/icons'
 import { useTable, useSortBy } from 'react-table'
 
 import { FaGithub, FaTwitter, FaYoutube } from 'react-icons/fa';
-
 
 
 
@@ -117,18 +136,41 @@ const [balanceETH, setbalanceETH] = useState("");
 const [familyStats,setfamilyStats] = useState("")
 const [familyBudget,setfamilyBudget] = useState("")
 const [Provider,setProvider] =useState(null);
+
+const [Signer,setSigner] =useState(null);
 const [value, setvalue] = useState("");
-const [message, setMessage] = useState("");
+
 const [marriedto, setmarriedto] = useState("");
 const [imageNFT,setimageNFT] = useState([]);
+const [tokenURI,settokenURI] = useState();
+
 const [wrongnetwork,setwrongnetwork] = useState(false);
 const [ContractAddress, setContractAddress] = useState("")
+const [nftContractAddress, setnftContractAddress] = useState("")
+const [mintedNFT, setMintedNFT] = useState()
+
+const [lovBalance, setlovBalance] = useState();
+const [lovBalancetimer, setlovBalancetimer] = useState();
+const [saleCap, setsaleCap] = useState();
+const [policyDays, setpolicyDays] = useState(0);
+
+
+//for voting 
+const [voteMessage, setvoteMessage] = useState("");
+const [voteType,setvoteType] = useState(0);
+const [voteEnds, setvoteEnds] = useState();
+const [voteNumTokens, setvoteNumTokens] = useState();
+const [voteReceiver, setvoteReceiver] = useState(0x0000000000000000000000000000000000000000);
+const [voteAmount, setvvoteAmount] = useState(0)
+
+
 
 const [chainID, setchainID] = useState('')
 
 const [currency, setcurrency] = useState('')
 //const [networkParams, setnetworkParams] = useState ([])
 
+const [isLoading, setIsLoading] = useState(false);
 
 //const { isOpen: isMobileNavOpen, onToggle: onToggle2  } = useDisclosure();
 const { isOpenother, onToggle } = useDisclosure();
@@ -148,6 +190,7 @@ const supportedNetworks = ["0x1","0x4","0x7a69","0x89"]
 
 
 const finalRef = React.useRef()
+
 
 
 const { 
@@ -171,7 +214,25 @@ const {
 } = useDisclosure()
 
 
+const { 
+  isOpen: isOpen6, 
+  onOpen: onOpen6, 
+  onClose: onClose6 
+} = useDisclosure()
  
+const { 
+  isOpen: isOpen7, 
+  onOpen: onOpen7, 
+  onClose: onClose7 
+} = useDisclosure()
+ 
+const { 
+  isOpen: isOpen8, 
+  onOpen: onOpen8, 
+  onClose: onClose8 
+} = useDisclosure()
+
+
 const data = React.useMemo(
   () => txarray,
   [txarray],
@@ -202,7 +263,6 @@ const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
     useTable({ columns, data }, useSortBy)
 
 
-
     // World of connections to wallets
 const checkIfWalletIsConnected = async () => {
   try {
@@ -212,6 +272,7 @@ const checkIfWalletIsConnected = async () => {
       console.log('Make sure you have MetaMask!');
       return;
     } else {
+      setIsLoading(true);
       console.log('We have the ethereum object', ethereum);
 
       const accounts = await ethereum.request({ method: 'eth_accounts' });
@@ -235,13 +296,20 @@ const checkIfWalletIsConnected = async () => {
           OpenContract(chainId);
           setwrongnetwork(false);
         }
-        
+        setIsLoading(false);
       } else {
         console.log('No authorized account found');
       }
     }
   } catch (error) {
     console.log(error);
+    toast({
+      title: `${error.message}`,
+      description: 'Transaction has not been completed',
+      status: 'warning',
+      duration: 9000,
+      isClosable: true,
+    })
   }
 };
 
@@ -249,17 +317,21 @@ const checkIfWalletIsConnected = async () => {
 const OpenContract = async (chainId) => {
   if (chainId === "0x7a69") {
     setContractAddress('0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0')
+    setnftContractAddress('0x1ef0ffb134e801e7Fc9d11d0620f093Dd7358320')
     setcurrency('lETH')
     
   }else if (chainId === "0x89") {
     setContractAddress('0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0')
+    setnftContractAddress('0x1ef0ffb134e801e7Fc9d11d0620f093Dd7358320')
     setcurrency('MATIC')
   } else if (chainId === "0x1") {
-    setContractAddress('0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0')
+    setContractAddress('0x0B72B8c9cd6e92156E70Dd0B3dE7C4bc1D991BF8')
+    setnftContractAddress('0x1ef0ffb134e801e7Fc9d11d0620f093Dd7358320')
     setcurrency('ETH')
 
   } else if (chainId === "0x4") {
-    setContractAddress('0x5790196def19E1f17fdE23893e4B4c9708b86ce9')
+    setContractAddress('0x97d56097252a67eD71a0F458AC5B8931658A9efD')
+    setnftContractAddress('0x1ef0ffb134e801e7Fc9d11d0620f093Dd7358320')
     setcurrency('rETH')
 } 
 }
@@ -356,6 +428,13 @@ const connectWalletAction = async () => {
 
   } catch (error) {
     console.log(error);
+    toast({
+      title: `${error.message}`,
+      description: 'Transaction has not been completed',
+      status: 'warning',
+      duration: 9000,
+      isClosable: true,
+    })
   }
 };
 
@@ -378,7 +457,7 @@ useEffect(() => {
     }
   
   checkIfWalletIsConnected();
-
+// eslint-disable-next-line
 }, []);
 
 // UseEffects
@@ -388,19 +467,22 @@ useEffect(() => {
   if (ethereum && ContractAddress !=='' ) {
     console.log("Your Contract address is: ", ContractAddress)
     const provider = new ethers.providers.Web3Provider(ethereum);
+    
     const signer = provider.getSigner();
     const gameContract = new ethers.Contract(
       ContractAddress,
       myEpicGame.abi,
       signer
     );
-    //eventFilterv5WithPagination(CONTRACT_ADDRESS,myEpicGame.abi,provider,10);
+
     /*
      * This is the big difference. Set our gameContract in state.
      */
     setGameContract(gameContract);
-    setProvider(signer);
+    setSigner(signer);
+    setProvider(provider);
     console.log("Connected to the smart contract.")
+
     
   } else {
     console.log('Contract object not found');
@@ -409,9 +491,29 @@ useEffect(() => {
 }, [ContractAddress])
 
 
+//Need to improve this 
+const checkNFT= async (waver,proposed) => {
+  
+  console.log('Checking NFT for', currentAccount);
 
+  try {
+  const txn = await gameContract.nftminted(waver,proposed);
+  console.log("NFT Status ", txn)
+  setMintedNFT (txn)
 
-//Need to build a network selector
+} catch (error) {
+  console.log(error)
+  toast({
+    title: `${error.message}`,
+    description: 'Transaction has not been completed',
+    status: 'warning',
+    duration: 9000,
+    isClosable: true,
+  })
+}
+
+}
+
 
 
 
@@ -441,6 +543,13 @@ useEffect(() => {
     }
   } catch (error) {
     console.log(error)
+    toast({
+      title: `${error.message}`,
+      description: 'Transaction has not been completed',
+      status: 'warning',
+      duration: 9000,
+      isClosable: true,
+    })
   }
   }
 
@@ -461,21 +570,62 @@ useEffect(() => {
     }
   } catch (error) {
     console.log(error)
+    toast({
+      title: `${error.message}`,
+      description: 'Transaction has not been completed',
+      status: 'warning',
+      duration: 9000,
+      isClosable: true,
+    })
   }
   }
+
+  
+
 
   if (currentAccount && gameContract) {
     console.log('CurrentAccount:', currentAccount);
     fetchNFTMetadata();
     fetchProposedtodata(); 
     EthBalance();
+    fetchLovBalance();
+    
   }
 
   // eslint-disable-next-line 
 }, [gameContract, setfamilyStats, currentAccount]);
 
 
+const fetchLovBalance = async () => {
+  console.log('Checking LOV Balance of the:', currentAccount);
+  try {
+  const txn2 = await gameContract.balanceOf(currentAccount);
+  console.log("LOV Balance is:", txn2.toNumber());
+  setlovBalance(txn2.toNumber());
+  const txn = await gameContract.claimtimer(currentAccount)
+  setlovBalancetimer(txn.toNumber())
+  console.log("LOV token Timer is", txn)
+  const txn3 = await gameContract.saleCap()
+  setsaleCap(txn3.toNumber());
+  const txn4 = await gameContract.policyDays();
+  console.log("POLICY DAYS", txn4.toNumber())
+  setpolicyDays(txn4.toNumber());
+
+} catch (error) {
+  console.log(error)
+  toast({
+    title: `${error.message}`,
+    description: 'Transaction has not been completed',
+    status: 'warning',
+    duration: 9000,
+    isClosable: true,
+  })
+}
+}
+
+
 useEffect(() => {
+  
 
   const onNewWave = async (id, waver, proposed, sender, message, time,vid) => {
     console.log("Incoming message with:",id, waver,proposed, sender,message,time,vid);
@@ -506,8 +656,6 @@ useEffect(() => {
 
 const onsendingStake = async (sender,time, value) => { 
 console.log("Incoming message with:", sender,time, value);
-console.log(sender)
-console.log(currentAccount)
 
 if (gameContract && sender.toUpperCase() === currentAccount.toUpperCase()) {
   let txn;
@@ -519,14 +667,15 @@ if (gameContract && sender.toUpperCase() === currentAccount.toUpperCase()) {
     console.log('Status has been updated');
     setfamilyStats(transformCharacterData(txn));
     toast({
-      title: 'Family Stake update',
-      description: "Your deposit has been sent",
+      title: 'Status update',
+      description: "Your deposit has been received",
       status: 'success',
       duration: 9000,
       isClosable: true,
     })
     //Close Addstake Modal
     onClose();
+    onClose6();
   
   } else if (txn.ProposalStatus===0) { 
     alert(`Your marriage has been annuled.`)
@@ -536,12 +685,17 @@ if (gameContract && sender.toUpperCase() === currentAccount.toUpperCase()) {
 };
 
   if (gameContract) {
+    
     /*
      * Setup NFT Minted Listener
      */
     gameContract.on('NewWave', onNewWave);
     gameContract.on('AddStake', onsendingStake);
    
+  }
+
+  if (familyStats && familyStats.ProposalStatus!==0) {
+    checkNFT(familyStats.waver,familyStats.proposed);
   }
 
   return () => {
@@ -565,15 +719,15 @@ useEffect(() => {
 }, [currentAccount, familyStats]);
 
 useEffect(() => {
-
+if (familyStats && familyStats.ProposalStatus!==0){
   setmarriedtofunction()
+}
+  
     // eslint-disable-next-line 
 }, [currentAccount,familyStats]);
 
 
 const setmarriedtofunction = async () => {
-  console.log ("Setting Married to...",currentAccount.toUpperCase(), familyStats.proposed.toUpperCase(),familyStats.waver.toUpperCase() )
-
   if (currentAccount.toUpperCase() === familyStats.proposed.toUpperCase()) {setmarriedto(familyStats.waver)} 
   else if (currentAccount.toUpperCase() === familyStats.waver.toUpperCase()) {setmarriedto(familyStats.proposed)}
   console.log ("So Married to is.....:", marriedto )
@@ -583,7 +737,7 @@ const setmarriedtofunction = async () => {
 //Balances update 
 
 const EthBalance = async () => {
-  Provider.getBalance("latest").then((balance) => {
+  Signer.getBalance("latest").then((balance) => {
     // convert a currency unit from wei to ether
     const balanceInEth = ethers.utils.formatEther(balance)
     setbalanceETH(balanceInEth);
@@ -596,6 +750,81 @@ const FamilyEthBalance = async () => {
   setfamilyBudget(FamilybalanceInEth);
 }
 
+
+
+
+const createProposal = async () => {
+  setIsLoading(true);
+
+  console.log(voteMessage,voteType+1,voteEnds,voteNumTokens,voteReceiver,voteAmount)
+
+  try {
+      const waveTxn = await gameContract.createProposal(voteMessage,voteType+1, voteEnds,voteNumTokens,voteReceiver,voteAmount);
+      console.log("Mining...", waveTxn.hash);
+      await waveTxn.wait();
+      console.log("Mined -- ", waveTxn.hash);
+
+      fetchLovBalance();
+
+
+    } catch (error) {
+      console.log(error)
+      toast({
+        title: `${error.message}`,
+        description: 'Transaction has not been completed',
+        status: 'warning',
+        duration: 9000,
+        isClosable: true,
+      })
+    }
+    setvoteMessage();
+    setvoteType(0);
+    setvoteEnds();
+    setvoteNumTokens();
+    setvoteReceiver(0x0000000000000000000000000000000000000000);
+    setvvoteAmount(0);
+    onClose2();
+    setIsLoading(false);
+};
+
+function validateWalletAddress(values) {
+   
+  const errors = {};
+  if (!values.votetext) {
+    errors.votetext = 'Voting text is required'
+  } else if (values.votetext.length>200) {
+    errors.votetext = 'Text exceeds symbol limit'
+  } else if (!values.voteEnds) {
+    errors.voteEnds = '# of Days required'
+  } else if (isNaN(values.voteEnds)) {
+    errors.voteEnds = '# of Days must be a Number'
+  }else if (!values.NumTokens) {
+    errors.NumTokens = '# of Lov tokens is required'
+  } else if (isNaN(values.NumTokens)) {
+    errors.NumTokens = '# of Lov tokens must be a Integer'
+  }else if (lovBalance<values.NumTokens) {
+    errors.NumTokens = '# of Lov tokens must less than your balance indicated above'
+  }
+    else if (!values.name) {
+      errors.name = 'Wallet Address is required'
+    } else if (!ethers.utils.isAddress(values.name)) { 
+     errors.name = "Wallet Address is not valid"       
+    } else if (!values.gift) {
+      errors.name = 'Amount is required'
+    }
+    else if (isNaN(values.gift)) {
+      errors.gift = 'Amount must be a Number'
+    } else if (values.gift>familyBudget) {
+      errors.gift = 'Amount to be sent is higher than the Family budget'
+    }else if (values.votetext.length> 0 && ethers.utils.isAddress(values.name) && !isNaN(values.voteEnds) &&  !isNaN(values.NumTokens)&&  !isNaN(values.gift) && values.gift<familyBudget && lovBalance>=values.NumTokens) {
+      setvoteMessage(values.votetext);
+      setvoteEnds(values.voteEnds * 86400);
+      setvoteNumTokens(Number(values.NumTokens));
+      setvoteReceiver(values.name);
+      setvvoteAmount(Number(values.gift)*1000000000);
+    } 
+    return errors
+  }
 
 
 // Render Methods
@@ -636,7 +865,6 @@ const renderContent = () => {
 );
 
 } 
-
 
 else {
  return (
@@ -708,7 +936,7 @@ else {
 </Box>):null}
 <Box>
 <Menu>
-  <MenuButton 
+  {currentAccount ? ( <MenuButton 
   as={Button} 
   colorScheme='pink'
   px={4}
@@ -718,6 +946,7 @@ else {
   borderWidth='1px'
   _hover={{ bg: 'gray.400' }}
   _focus={{ boxShadow: 'outline' }}
+  rightIcon={<ChevronDownIcon />}
   >
   <HStack spacing={1}>
   <Text color="white" fontSize="md" fontWeight="medium" mr="2">    
@@ -728,20 +957,34 @@ else {
         </Text>
         <Identicon currentAccount={currentAccount} />
         </HStack>
-  </MenuButton>
+  </MenuButton>): null}
   <MenuList>
     <MenuGroup title=''>
-    {familyStats.ProposalStatus === 5 ? (
-      <MenuItem>Initiate Family Voting</MenuItem>):null}
+   
     {familyStats.ProposalStatus === 4 ? (
       <MenuItem onClick={onOpen}>Add Stake
       
       <Modal finalFocusRef={finalRef} isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Enter {currency} value</ModalHeader>
+                 
+
+          <ModalHeader>
+            <HStack>
+              <Text>
+            Enter {currency} value.
+            </Text>
+
+          <Tooltip label='This amount will be sent to the Family Budget.' fontSize='md' placement='right' shouldWrapChildren>
+                      <FcAbout/>
+            </Tooltip>
+            </HStack>
+          </ModalHeader>
+          
+                                    
           <ModalCloseButton />
           <ModalBody>
+          {!isLoading ? (<Box >
 
           <NumberInput
                 onChange={(valueString) => setvalue(parse(valueString))}
@@ -753,6 +996,14 @@ else {
                   <NumberDecrementStepper />
                 </NumberInputStepper>
               </NumberInput>
+              </Box>):<Center> <Spinner
+                  thickness='4px'
+                  speed='0.65s'
+                  emptyColor='gray.200'
+                  color='blue.500'
+                  size='xl'
+                  
+                /></Center>}
 
           </ModalBody>
 
@@ -765,46 +1016,143 @@ else {
         </ModalContent>
       </Modal> 
       </MenuItem>):null}
-    {familyStats.ProposalStatus === 4 && familyStats.DivorceStatus === 0 ? (
-       <MenuItem onClick={onOpen2}> Initiate Divorce
-      
-       <Modal finalFocusRef={finalRef} isOpen={isOpen2} onClose={onClose2}>
-         <ModalOverlay />
-         <ModalContent>
-           <ModalHeader>Are you sure you want to initiate Divorce?</ModalHeader>
-           <ModalCloseButton />
-           <ModalBody>
 
-           <Textarea
-            value={message}
-             onChange={e => setMessage(e.target.value)}
-             placeholder='Include a note'
-              size='sm'
-            />
-            <Text fontSize='sm' color = 'red.500'>*If Divorce is accepted, the Family Stake will be split between partners.</Text>
- 
-           
-           </ModalBody>
- 
-           <ModalFooter>
-             <Button colorScheme='blue' mr={3} onClick={onClose2}>
-               Close
-             </Button>
-             <Button variant='ghost' onClick={ProposeDivorce} >Proceed</Button>
-           </ModalFooter>
-         </ModalContent>
-       </Modal>
-       
-       
-       </MenuItem>):null}
+      {familyStats.ProposalStatus === 4 ? (
+        
+      <MenuItem onClick={onOpen6}>Buy Lov Token
+      
+      <Modal finalFocusRef={finalRef} isOpen={isOpen6} onClose={onClose6}>
+      
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+          <HStack>
+              <Text>
+            Enter {currency} value.
+            </Text>
+
+          <Tooltip label='You will get 100 LOV Tokens for 1 ETH' fontSize='md' placement='right' shouldWrapChildren>
+                      <FcAbout/>
+            </Tooltip>
+            </HStack>
+
+          
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+          
+          {!isLoading ? (<Box >
+            
+          <Text color = "blue"> Your current balance is: {lovBalance} LOV </Text>
+          <Text color = "blue"> Available for purchase: {saleCap} LOV tokens </Text>
+          <NumberInput
+                onChange={(valueString) => setvalue(parse(valueString))}
+                value={format(value)}
+              >
+                <NumberInputField />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+              <Text color = "green"> You will get LOV Tokens: {parseInt(value*100)} </Text>
+              </Box>):<Center> <Spinner
+                  thickness='4px'
+                  speed='0.65s'
+                  emptyColor='gray.200'
+                  color='blue.500'
+                  size='xl'
+                  
+                /></Center>}
+        
+          </ModalBody>
+
+          <ModalFooter>
+            <Button  mr={3} variant='ghost' onClick={onClose6}>
+              Close
+            </Button>
+            
+            <Button colorScheme='blue' onClick={buyLovToken}> Buy LOV Token  
+            
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+        
+      </Modal> 
+      </MenuItem>
+      ):null}
+      
+      {familyStats.ProposalStatus === 4 ? (
+      <MenuItem onClick={onOpen7}>Claim LOV Token
+      
+      <Modal finalFocusRef={finalRef} isOpen={isOpen7} onClose={onClose7}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+          <HStack>
+              <Text>
+              Claim LOV token
+            </Text>
+
+          <Tooltip label='You can claim LOV Tokens periodically in the amount of 100*Family Budget.' fontSize='md' placement='right' shouldWrapChildren>
+                      <FcAbout/>
+            </Tooltip>
+            </HStack>
+            
+            
+            
+            </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+          {!isLoading ? (<Box >
+          <Text color = "blue"> Your current balance is: {lovBalance} LOV </Text>
+          
+          <Text color = "green"> You can claim: {parseInt(familyBudget*100)} LOV tokens on: {lovBalancetimer===0 ? ("NOW"):null} {lovBalancetimer > 0 ? (Intl.DateTimeFormat('en-US', {year: 'numeric', month: '2-digit',day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'}).format(((lovBalancetimer+ policyDays)*1000))):null}</Text>
+
+          </Box>):<Center> <Spinner
+                  thickness='4px'
+                  speed='0.65s'
+                  emptyColor='gray.200'
+                  color='blue.500'
+                  size='xl'
+                  
+                /></Center>}
+
+          </ModalBody>
+
+          <ModalFooter>
+            <Button  mr={3} variant='ghost' onClick={onClose7}>
+              Close
+            </Button>
+            <Button colorScheme='blue' onClick={claimToken}>Claim LOV Token</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal> 
+      </MenuItem>):null}
+
+
+   
        <MenuItem onClick={onOpen3}>Transactions History
        
        <Modal finalFocusRef={finalRef} isOpen={isOpen3} onClose={onClose3}>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Transaction History</ModalHeader>
+          <ModalHeader>
+          <HStack>
+              <Text>
+              Transaction History
+            </Text>
+
+          <Tooltip label='You can view your ETH Transaction History' fontSize='md' placement='right' shouldWrapChildren>
+                      <FcAbout/>
+            </Tooltip>
+            </HStack>
+            
+            
+            </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
+          {!isLoading ? (<Box >
           <Table {...getTableProps()}>
       <Thead>
         {headerGroups.map((headerGroup) => (
@@ -844,6 +1192,13 @@ else {
         })}
       </Tbody>
     </Table>
+    </Box>):<Center> <Spinner
+                  thickness='4px'
+                  speed='0.65s'
+                  emptyColor='gray.200'
+                  color='blue.500'
+                  size='xl'
+                /></Center>}
           </ModalBody>
 
           <ModalFooter>
@@ -854,19 +1209,117 @@ else {
           </ModalFooter>
         </ModalContent>
       </Modal> 
-       
+
        </MenuItem>
+
+       {familyStats.ProposalStatus === 4 && mintedNFT === false ? <MenuItem onClick={onOpen8}> Mint your NFT
        
-       {familyStats.ProposalStatus === 4 ? <MenuItem onClick={onOpen4}> See your onchain NFT
+       <Modal onClose={onClose8} size={'full'} isOpen={isOpen8}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Minting NFT menu</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+
+            <NFTPricing gameContract = {gameContract} setMintedNFT = {setMintedNFT}/>
+          
+          
+          </ModalBody>
+          <ModalFooter>
+            <Button onClick={onClose8}>Close</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+              
+       </MenuItem> : null}
+       
+       {familyStats.ProposalStatus === 4 && mintedNFT === true  ? <MenuItem onClick={onOpen4}> See your onchain NFT
        
        <Modal finalFocusRef={finalRef} isOpen={isOpen4} onClose={onClose4}>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader> Your NFT</ModalHeader>
+          <ModalHeader> 
+          <HStack>
+              <Text>
+              Your NFT
+            </Text>
+            </HStack>
+            
+            
+           </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            
+          {!isLoading ? (<Box >
+            {imageNFT.image ? (
+              <VStack spacing={4}>
           <Image src={imageNFT.image} alt='Image NFT' />
+          
+          <Text fontSize='md' color='blue.800' fontWeight='bold'>Properties:</Text>
+          
+          <HStack spacing={6}>
+          <Box
+            p={4}
+            bg='blue.50'
+            fontWeight='bold'
+            borderRadius='md'
+            borderWidth='1px'
+            borderColor='blue.800'
+          >
+            <Text fontSize='xs' color='blue.300'>STATUS:</Text>
+            <Text fontSize='sm' color='blue.800'>{imageNFT.attributes[1].value}</Text>
+          </Box>
+
+          <Box
+            p={4}
+            bg='blue.50'
+            fontWeight='bold'
+            borderRadius='md'
+            borderWidth='1px'
+            borderColor='blue.800'
+          >
+            <Text fontSize='xs' color='blue.300'>STAKE:</Text>
+            <Text fontSize='sm' color='blue.800'>{imageNFT.attributes[0].value}</Text>
+            
+          </Box>
+          
+          </HStack>
+
+          <Link
+            href={`https://testnets.opensea.io/assets/${nftContractAddress}/${tokenURI}`} 
+            p={2}
+            color='white'
+            fontWeight='bold'
+            borderRadius='xl'
+            borderWidth='2px'
+            maxW='md'
+            bgGradient='linear(to-r, teal.500, blue.500)'
+            isExternal
+            _hover={{
+            bgGradient: 'linear(to-r, red.500, yellow.500)',  
+            }}
+          >
+            See your NFT in OpenSea<ExternalLinkIcon mx='3px' />
+            
+          </Link>
+
+          </VStack>
+          
+          ): 
+          <Text>
+            Please load your NFT by clicking "Load NFT Image"
+          </Text>
+          }
+
+
+
+          </Box>):<Center> <Spinner
+                  thickness='4px'
+                  speed='0.65s'
+                  emptyColor='gray.200'
+                  color='blue.500'
+                  size='xl'
+                /></Center>}
         
           </ModalBody>
 
@@ -879,9 +1332,380 @@ else {
         </ModalContent>
       </Modal> 
        </MenuItem> : null}
+       {familyStats.ProposalStatus === 4 ? (
+       <MenuItem onClick={onOpen2} fontWeight='bold' > Initiate Proposals
+      
+       <Modal finalFocusRef={finalRef} isOpen={isOpen2} onClose={onClose2} size={'xl'}>
+         <ModalOverlay />
+         <ModalContent>
+           <ModalHeader>Create Proposals Here. Your current balance: {lovBalance} LOVs</ModalHeader>
+           <ModalCloseButton />
+           <ModalBody>
+
+              <Tabs index={voteType} onChange={(index) => setvoteType(index)} isFitted variant='enclosed'>
+               
+                      <TabList>
+                        <Tab>Vote Proposal</Tab>
+                        <Tab>Send from Family Budget</Tab>
+                        <Tab>Initiate Divorce</Tab>
+                      </TabList>
+                      <TabPanels>
+                        <TabPanel>
+                        
+                          {!isLoading ? (<Box >
+
+                                  <FormControl>
+                                  <Formik
+                                  initialValues={{ votetext: '', voteEnds: '', NumTokens: '', name: '0x0000000000000000000000000000000000000000', gift: '0'}}
+                                  validate={validateWalletAddress}
+                                  onSubmit={(values, actions) => {
+                                  setTimeout(() => {
+                                  alert(JSON.stringify(values, null, 2))
+                                  actions.setSubmitting(false)
+                                  }, 1000)
+                                  }}
+                                  >
+                                  {(props) => (
+                                  <Form>
+                                  <Field name='votetext'>
+                                    {({ field, form }) => (
+                                      <FormControl isInvalid={form.errors.votetext && form.touched.votetext}>
+                                        <FormLabel htmlFor='votetext'>
+
+                                        <HStack>
+                                        <Text
+                                              bgGradient= 'linear(to-r, green.500, green.800)'
+                                              bgClip='text'
+                                              fontSize='2xl'
+                                              fontWeight='bold'>
+                                              Proposal text:
+                                        </Text>
+
+                                        <Tooltip label='This text will be shown in your Proposal Card.' fontSize='md' placement='right' shouldWrapChildren>
+                                                    <FcAbout/>
+                                            </Tooltip>
+                                        </HStack>
+
+                                          </FormLabel>
+                                        <Input {...field} id='votetext' placeholder='Max 200 symbols'
+                                      />
+                                        <FormErrorMessage>{form.errors.votetext}</FormErrorMessage>
+                                      </FormControl>
+                                    )}
+                                  </Field>
 
 
-    
+                                  <Field name='voteEnds'>
+                                    {({ field, form }) => (
+                                      <FormControl isInvalid={form.errors.voteEnds && form.touched.voteEnds}>
+                                        <FormLabel htmlFor='voteEnds'>
+                                        <HStack>
+                                        <Text
+                                              bgGradient= 'linear(to-r, green.500, green.800)'
+                                              bgClip='text'
+                                              fontSize='2xl'
+                                              fontWeight='bold'>
+                                              Voting ends after this number of days:  
+                                        </Text>
+                                        <Tooltip label='If there were no response to your proposal in allocated time you can pass your proposal due to timeout.' fontSize='md' placement='right' shouldWrapChildren>
+                                                    <FcAbout/>
+                                            </Tooltip>
+
+                                            </HStack>
+                                          </FormLabel>
+
+                                        <Input {...field} id='voteEnds' placeholder='Enter # in Days'/>
+
+                                        <FormErrorMessage>{form.errors.voteEnds}</FormErrorMessage>
+                                      </FormControl>
+                                    )}
+                                  </Field>
+
+                                  <Field name='NumTokens'>
+                                    {({ field, form }) => (
+                                      <FormControl isInvalid={form.errors.NumTokens && form.touched.NumTokens}>
+                                        <FormLabel htmlFor='NumTokens'>
+                                          <HStack>
+
+                                        <Text
+                                              bgGradient= 'linear(to-r, green.500, green.800)'
+                                              bgClip='text'
+                                              fontSize='2xl'
+                                              fontWeight='bold'>
+                                            Backed by LOV Tokens:   
+                                        </Text>
+                                    
+                                        <Tooltip label='LOV token will be used as a Bid. Responder can decline your proposal by providing higher Bid.' fontSize='md' placement='right' shouldWrapChildren>
+                                                    <FcAbout/>
+                                            </Tooltip>
+                                          </HStack>
+                                          </FormLabel>
+                                        <Input {...field} id='NumTokens' placeholder='# of LOV tokens to back your proposal'
+                                        />
+                                        <FormErrorMessage>{form.errors.NumTokens}</FormErrorMessage>
+                                      </FormControl>
+                                    )}
+                                  </Field>
+
+                                    </Form>
+                                  )}
+                                  </Formik>
+
+                                  </FormControl>
+                                  </Box>):<Center> <Spinner
+                                          thickness='4px'
+                                          speed='0.65s'
+                                          emptyColor='gray.200'
+                                          color='blue.500'
+                                          size='xl'
+                                        /></Center>}
+                            
+                        
+                        </TabPanel>
+
+
+                        <TabPanel>
+                         {!isLoading ? (<Box >
+
+                                  <FormControl>
+
+                                  <Formik
+                                  initialValues={{ votetext: '', voteEnds: '0', NumTokens: '', name: '', gift: '0'}}
+                                  validate={validateWalletAddress}
+                                  onSubmit={(values, actions) => {
+                                  setTimeout(() => {
+                                  alert(JSON.stringify(values, null, 2))
+                                  actions.setSubmitting(false)
+                                  }, 1000)
+                                  }}
+                                  >
+                                  {(props) => (
+
+                                  <Form>
+                                  <Field name='votetext'>
+                                    {({ field, form }) => (
+                                      <FormControl isInvalid={form.errors.votetext && form.touched.votetext}>
+                                        <FormLabel htmlFor='votetext'>
+
+                                        <HStack>
+                                        <Text
+                                              bgGradient= 'linear(to-r, green.500, green.800)'
+                                              bgClip='text'
+                                              fontSize='2xl'
+                                              fontWeight='bold'>
+                                              Proposal text:
+                                        </Text>
+
+                                        <Tooltip label='This text will be shown in your Proposal Card.' fontSize='md' placement='right' shouldWrapChildren>
+                                                    <FcAbout/>
+                                            </Tooltip>
+                                        </HStack>
+
+                                          
+                                          </FormLabel>
+                                        <Input {...field} id='votetext' placeholder='Max 200 symbols'
+                                      />
+                                        <FormErrorMessage>{form.errors.votetext}</FormErrorMessage>
+                                      </FormControl>
+                                    )}
+                                  </Field>
+
+
+                                 
+
+                                  <Field name='NumTokens'>
+                                    {({ field, form }) => (
+                                      <FormControl isInvalid={form.errors.NumTokens && form.touched.NumTokens}>
+                                        <FormLabel htmlFor='NumTokens'>
+
+                                        <HStack>
+
+                                        <Text
+                                              bgGradient= 'linear(to-r, green.500, green.800)'
+                                              bgClip='text'
+                                              fontSize='2xl'
+                                              fontWeight='bold'>
+                                            Backed by LOV Tokens:   
+                                        </Text>
+                                    
+                                        <Tooltip label='LOV token will be used as a Bid. Responder can decline your proposal by providing a Bid that is higher than your Bid in square root. Financial proposals are easier to vote against.' fontSize='md' placement='right' shouldWrapChildren>
+                                                    <FcAbout/>
+                                            </Tooltip>
+                                        
+                                        </HStack>
+                                    
+                                          
+                                          </FormLabel>
+                                        <Input {...field} id='NumTokens' placeholder='# of LOV tokens to back your proposal'
+                                        />
+                                        <FormErrorMessage>{form.errors.NumTokens}</FormErrorMessage>
+                                      </FormControl>
+                                    )}
+                                  </Field>
+
+                                  <Field name='name'>
+                                    {({ field, form }) => (
+                                      <FormControl isInvalid={form.errors.name && form.touched.name}>
+                                        <FormLabel htmlFor='name'> 
+                                        <HStack>  
+                                        <Text
+                                    bgGradient= 'linear(to-r, green.500, green.800)'
+                                    bgClip='text'
+                                    fontSize='2xl'
+                                    >
+                                    Enter Wallet Address 
+                                        </Text>
+                                        <Tooltip label='Provide non ENS Wallet Address. The specified amount will be sent to this address from the Family Budget.' fontSize='md' placement='right' shouldWrapChildren>
+                                                    <FcAbout/>
+                                            </Tooltip>
+
+                                            </HStack>
+                                        
+
+
+                                          </FormLabel>
+                                        <Input {...field} id='name' placeholder='Recepient Wallet Address'
+                                        />
+                                        <FormErrorMessage>{form.errors.name}</FormErrorMessage>
+                                      </FormControl>
+                                    )}
+                                  </Field>
+
+                                  <Field name='gift'>
+                                    {({ field, form }) => (
+                                      <FormControl isInvalid={form.errors.gift && form.touched.gift}>
+                                        <FormLabel htmlFor='gift'>
+                                        <HStack>
+                                        <Text
+                                              bgGradient= 'linear(to-r, green.500, green.800)'
+                                              bgClip='text'
+                                              fontSize='2xl'
+                                            >
+                                              Amount to be sent in {currency}
+                                        </Text>
+
+                                        <Tooltip label='Specified amount will be sent from the Family Budget if proposal is accepted. This should not exceed your Family Budget.' fontSize='md' placement='right' shouldWrapChildren>
+                                                    <FcAbout/>
+                                            </Tooltip>
+
+                                            </HStack>
+                                          
+
+
+                                          </FormLabel>
+                                        <Input {...field} id='gift' placeholder='Enter amount less than the Family Budget'
+                                      />
+                                        <FormErrorMessage>{form.errors.gift}</FormErrorMessage>
+                                        <Text
+                                              color = 'blue'
+                                              fontSize='1xl'
+                                            >
+                                              * You can pass your proposal if there were no response in {policyDays} Days.
+                                        </Text>
+                                      </FormControl>
+                                    )}
+                                  </Field>
+
+                                    </Form>
+                                  )}
+                                  </Formik>
+
+                                  </FormControl>
+                                  </Box>):<Center> <Spinner
+                                          thickness='4px'
+                                          speed='0.65s'
+                                          emptyColor='gray.200'
+                                          color='blue.500'
+                                          size='xl'
+                                        /></Center>}
+                        </TabPanel>
+                        
+                        <TabPanel>
+                        {!isLoading ? (<Box >
+
+                            <FormControl>
+
+                            <Formik
+                            initialValues={{ votetext: '', voteEnds: '0', NumTokens: '0', name: '0x0000000000000000000000000000000000000000', gift: '0'}}
+                            validate={validateWalletAddress}
+                            onSubmit={(values, actions) => {
+                            setTimeout(() => {
+                            alert(JSON.stringify(values, null, 2))
+                            actions.setSubmitting(false)
+                            }, 1000)
+                            }}
+                            >
+                            {(props) => (
+
+                            <Form>
+                            <Field name='votetext'>
+                              {({ field, form }) => (
+                                <FormControl isInvalid={form.errors.votetext && form.touched.votetext}>
+                                  <FormLabel htmlFor='votetext'>
+
+                                  <HStack>
+                                        <Text
+                                              bgGradient= 'linear(to-r, green.500, green.800)'
+                                              bgClip='text'
+                                              fontSize='2xl'
+                                              fontWeight='bold'>
+                                              Proposal text:
+                                        </Text>
+
+                                        <Tooltip label='This text will be shown in your Proposal Card.' fontSize='md' placement='right' shouldWrapChildren>
+                                                    <FcAbout/>
+                                            </Tooltip>
+                                        </HStack>
+
+
+                                    
+                                    </FormLabel>
+                                  <Input {...field} id='votetext' placeholder='Max 200 symbols'
+                                />
+                                  <FormErrorMessage>{form.errors.votetext}</FormErrorMessage>
+                                  <Text
+                                              color = 'blue'
+                                              fontSize='1xl'
+                                            >
+                                              * You can pass your proposal if there were no response in {policyDays} Days.
+                                        </Text>
+                                </FormControl>
+                              )}
+                            </Field>
+
+
+                              </Form>
+                            )}
+                            </Formik>
+
+                            </FormControl>
+                            </Box>):<Center> <Spinner
+                                    thickness='4px'
+                                    speed='0.65s'
+                                    emptyColor='gray.200'
+                                    color='blue.500'
+                                    size='xl'
+                                  /></Center>}
+                        </TabPanel>
+                      </TabPanels>
+                    </Tabs>
+           
+           </ModalBody>
+ 
+           <ModalFooter>
+             <Button colorScheme='blue' mr={3} onClick={onClose2}>
+               Close
+             </Button>
+             <Button variant='ghost'  onClick={createProposal} >Proceed</Button>
+           </ModalFooter>
+         </ModalContent>
+       </Modal>
+       
+       
+       </MenuItem>):null}
+       
+      
+       
     </MenuGroup>
   </MenuList>
 </Menu>
@@ -894,34 +1718,66 @@ else {
 }
 
 const loadNFTimage = async () => {
-
+  const { ethereum } = window;
+  setIsLoading(true);
   try {
-    const txn = await gameContract.nftHolders(familyStats.waver,familyStats.proposed)
+    const ABI = [ 'function nftHolders(address _waver, address _proposed) view returns (uint256 _id)',
+    'function tokenURI (uint256 _id) view returns (string)'
+    ]
+    const provider = new ethers.providers.Web3Provider(ethereum);
+    const signer = provider.getSigner();
+    const NFTContract = new ethers.Contract(
+      //"0x8a8771636019e218aAf0b50E7cB90BaA3A4E9301",
+      nftContractAddress,
+      ABI,
+      signer
+    );
+
+    const txn = await NFTContract.nftHolders(familyStats.waver,familyStats.proposed)
     console.log("Token ID", txn)
-    const txn2 = await gameContract.tokenURI(txn);
+    settokenURI(txn.toNumber());
+    const txn2 = await NFTContract.tokenURI(txn);
     console.log(txn2)
     const decodedtxn = txn2.slice(29,txn2.length)
     let base64ToString = atob(decodedtxn);
     const jsonobject = JSON.parse(base64ToString);
     setimageNFT(jsonobject);
+    console.log("JSON",jsonobject)
+    console.log("JSON Attributes",jsonobject.attributes[1].value)
     console.log(jsonobject.image)
+
+    toast({
+      title: 'Status Update',
+      description: "Your NFT has been loaded",
+      status: 'success',
+      duration: 9000,
+      isClosable: true,
+    })
 
 
     } catch (error) {
       console.log(error)
+      toast({
+        title: `${error.message}`,
+        description: 'Transaction has not been completed',
+        status: 'warning',
+        duration: 9000,
+        isClosable: true,
+      })
     }
-}
+    setIsLoading(false);
+  }
 
 
 const texttransformer =  () => {
 
-  if (familyStats.ProposalStatus === 1 && familyStats.DivorceStatus === 0 ) {
+  if (familyStats.ProposalStatus === 1 ) {
   return ("Proposal Initiated")
-  } else if (familyStats.ProposalStatus === 2 && familyStats.DivorceStatus === 0 ) {
+  } else if (familyStats.ProposalStatus === 2  ) {
     return("Proposal Cancelled")
-  }else if (familyStats.ProposalStatus === 3 && familyStats.DivorceStatus === 0 ) {
+  }else if (familyStats.ProposalStatus === 3 ) {
     return("Proposal Accepted")
-  }else if (familyStats.ProposalStatus === 4 && familyStats.DivorceStatus === 0 ) {
+  }else if (familyStats.ProposalStatus === 4  ) {
     return(
       <HStack>
     <Text color="white" fontSize="md">Married</Text>
@@ -932,43 +1788,16 @@ const texttransformer =  () => {
       marriedto.length)}</Text>
       </HStack>
     )
-  }else if (familyStats.ProposalStatus === 4 && familyStats.DivorceStatus === 1 ) {
-    return(
-      <HStack> 
-    <Text color="white" fontSize="md">Divorce</Text>
-    <Text color="white" fontSize="md">with</Text>
-    <Text color="white" fontSize="md">
-    {marriedto.slice(0, 4)}...{marriedto.slice(
-    marriedto.length - 4,
-    marriedto.length)}</Text>   
-    <Text color="white" fontSize="md">initiated</Text> 
-  </HStack>
-  
-    )
-  }else if (familyStats.ProposalStatus === 4 && familyStats.DivorceStatus === 2 ) {
-    return(
-      <HStack> 
-      <Text color="white" fontSize="md">Divorce</Text>
-      <Text color="white" fontSize="md">with</Text>
-      <Text color="white" fontSize="md">
-      {marriedto.slice(0, 4)}...{marriedto.slice(
-      marriedto.length - 4,
-      marriedto.length)}</Text>   
-      <Text color="white" fontSize="md">initiated</Text> 
-    </HStack>
-   
-      )
-  } else if (familyStats.ProposalStatus === 4 && familyStats.DivorceStatus === 3 ) {
-    return("Divorced.")
-  };
+  }
   } 
  
 
 
   const getTransactions = async () => {
+    setIsLoading(true);
     var txarray =[]
     // eslint-disable-next-line 
-    const myAddress = await Provider.getAddress()
+    const myAddress = await Signer.getAddress()
     const filterFrom = gameContract.filters.AddStake(myAddress,null,null)
     const query = await gameContract.queryFilter(filterFrom, -10000);
 
@@ -977,10 +1806,9 @@ const texttransformer =  () => {
         const {timestamp,amount} = query[i].args
         console.log(timestamp.toNumber(),ethers.utils.formatEther(amount))
         
-    
         txarray.push({
           id: i,
-          time: Intl.DateTimeFormat('en-US', {year: 'numeric', month: '2-digit',day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'}).format(timestamp.toNumber()),
+          time: Intl.DateTimeFormat('en-US', {year: 'numeric', month: '2-digit',day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'}).format(timestamp.toNumber()*1000),
           amount: ethers.utils.formatEther(amount)})
       }
       
@@ -989,41 +1817,106 @@ const texttransformer =  () => {
     console.log(data)
     console.log(columns)
     console.log(txarray)
+
+
+    toast({
+      title: 'Status Update',
+      description: "Your Transactions have been loaded",
+      status: 'success',
+      duration: 9000,
+      isClosable: true,
+    })
+
+    setIsLoading(false);
    
   }
 
 
 
 
-
   const addStake = async () => {
-   
+    setIsLoading(true);
     try {
       //implement gas estimation
-        const waveTxn = await gameContract.addstake( {value: ethers.utils.parseUnits(value, 'ether'),gasPrice: ethers.utils.parseUnits('100', 'gwei'), gasLimit: 2000000});
+        const waveTxn = await gameContract.addstake( {value: ethers.utils.parseUnits(value, 'ether')});
         console.log("Mining...", waveTxn.hash);
         await waveTxn.wait();
         console.log("Mined -- ", waveTxn.hash);
+        setvalue('')
       } catch (error) {
         console.log(error)
+        toast({
+          title: `${error.message}`,
+          description: 'Transaction has not been completed',
+          status: 'warning',
+          duration: 9000,
+          isClosable: true,
+        })
       }
+      setIsLoading(false);
   };
 
-  const ProposeDivorce = async () => {
-  
+
+  const buyLovToken = async () => {
+    setIsLoading(true);
     try {
-        const waveTxn = await gameContract.divorceproposal(message);
+      //implement gas estimation
+        const waveTxn = await gameContract.buyLovToken( {value: ethers.utils.parseUnits(value, 'ether')});
         console.log("Mining...", waveTxn.hash);
-
         await waveTxn.wait();
         console.log("Mined -- ", waveTxn.hash);
-        
+        setvalue('')
+        fetchLovBalance();
+      } catch (error) {
+        console.log(error)
+        toast({
+          title: `${error.message}`,
+          description: 'Transaction has not been completed',
+          status: 'warning',
+          duration: 9000,
+          isClosable: true,
+        })
+      }
+      setIsLoading(false);
+  };
+
+  const claimToken = async () => {
+    setIsLoading(true);
+    try {
+      //implement gas estimation
+        const waveTxn = await gameContract.claimToken();
+        console.log("Mining...", waveTxn.hash);
+        await waveTxn.wait();
+        console.log("Mined -- ", waveTxn.hash);
+        setvalue('')
+        toast({
+          title: 'Status Update',
+          description: "You have claimed your token",
+          status: 'success',
+          duration: 9000,
+          isClosable: true,
+        })
+
+        fetchLovBalance();
+    
 
       } catch (error) {
         console.log(error)
+        toast({
+          title: `${error.message}`,
+          description: 'Transaction has not been completed',
+          status: 'warning',
+          duration: 9000,
+          isClosable: true,
+        })
       }
-
+      setIsLoading(false);
+      onClose7();
   };
+
+
+
+
 
 
 const renderContent2 = () => {
@@ -1537,7 +2430,7 @@ const renderContent2 = () => {
         align={'center'}
         spacing={{ base: 8, md: 10 }}
         py={{ base: 20, md: 28 }}>
-    <SelectCharacter gameContract={gameContract} setCharacterNFT={setCharacterNFT} currentAccount={currentAccount} 
+    <SelectCharacter balanceETH={balanceETH} gameContract={gameContract} Provider = {Provider} setCharacterNFT={setCharacterNFT} currentAccount={currentAccount} 
     />
     </Stack>
     </Container>);	
@@ -1556,7 +2449,7 @@ const renderContent2 = () => {
       align={'center'}
       spacing={{ base: 8, md: 10 }}
       py={{ base: 20, md: 28 }}>
-    <Arena gameContract={gameContract}  Provider = {Provider} currentAccount={currentAccount} userBeenProposed={userBeenProposed} setuserBeenProposed={setuserBeenProposed}/>
+    <Arena Signer = {Signer} gameContract={gameContract}  Provider = {Provider} currentAccount={currentAccount} userBeenProposed={userBeenProposed} setuserBeenProposed={setuserBeenProposed}/>
     </Stack>
     </Container>
       );
@@ -1574,14 +2467,13 @@ const renderContent2 = () => {
       align={'center'}
       spacing={{ base: 8, md: 10 }}
       py={{ base: 20, md: 28 }}>
-    <Execute gameContract={gameContract} currentAccount={currentAccount} characterNFT={characterNFT} setCharacterNFT={setCharacterNFT} />
+    <Execute balanceETH = {balanceETH} Signer = {Signer} gameContract={gameContract} currentAccount={currentAccount} characterNFT={characterNFT} setCharacterNFT={setCharacterNFT} />
     </Stack>
     </Container>
       );
   } 
 
 }
-
 
 
 
@@ -1631,7 +2523,7 @@ const DesktopNav = () => {
     </Stack>
   );
 };
-
+ // eslint-disable-next-line 
 const DesktopSubNav = ({ label, href, subLabel }: NavItem) => {
   return (
     <Link
@@ -1678,7 +2570,7 @@ const MobileNav = () => {
     </Stack>
   );
 };
-
+ // eslint-disable-next-line 
 const MobileNavItem = ({ label, children, href }: NavItem) => {
   const { isOpenother, onToggle } = useDisclosure();
 
@@ -1882,13 +2774,14 @@ const SocialButton = ({
       </Box>
 
   </GridItem>
-
-
-
+ 
+  
   <Box
+     
       bg={useColorModeValue('gray.50', 'gray.900')}
       color={useColorModeValue('gray.700', 'gray.200')}>
       <Container
+        flex ='1'
         as={Stack}
         maxW={'6xl'}
         py={4}
@@ -1910,8 +2803,8 @@ const SocialButton = ({
         </Stack>
       </Container>
     </Box>
-
-</Grid>
+   
+    </Grid>
 
     </ChakraProvider>
   );
@@ -1922,7 +2815,6 @@ const SocialButton = ({
 
 
 export default App;
-
 
 
 

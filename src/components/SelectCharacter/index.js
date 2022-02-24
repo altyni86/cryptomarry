@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import { transformCharacterData } from '../../constants';
-import myEpicGame from '../../utils/marriages.json';
+import ENScheck from "../../components/ENScheck";
+import { 
+  FcAbout,
+} from 'react-icons/fc';
 
 import {
     FormControl,
@@ -9,8 +12,12 @@ import {
     FormErrorMessage,
     Input,
     Text,
-   
     Box,
+    createStandaloneToast,
+    Spinner,
+    Center,
+    Tooltip,
+    HStack
     
 
   } from '@chakra-ui/react'
@@ -18,42 +25,26 @@ import {
   import { Formik, Form, Field} from 'formik';
 
 
-const SelectCharacter = ({gameContract, currentAccount,setCharacterNFT}) => {
+const SelectCharacter = ({balanceETH, gameContract,Provider, currentAccount,setCharacterNFT}) => {
   
   //const [gameContract, setgameContract] = useState(null);
   const [address, setaddress] = useState("");
   const [stake, setstake] = useState("");
-  const [gift, setgift] = useState("0");
+  const [gift, setgift] = useState(0);
   const [message, setMessage] = useState("");
+  const [hasENS, sethasENS] = useState(0);
+  //const [addressENS, setaddressENS] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
  
-/*
-  // UseEffect
-  useEffect(() => {
-    const { ethereum } = window;
-  
-    if (ethereum) {
-      const provider = new ethers.providers.Web3Provider(ethereum);
-      const signer = provider.getSigner();
-      const gameContract = new ethers.Contract(
-        ContractAddress,
-        myEpicGame.abi,
-        signer
-      )
-      setgameContract(gameContract) 
+  console.log("updated ENS status", hasENS)
 
-
-    } else {
-      console.log('Ethereum object not found');
-    }
-  }, [ContractAddress]);
-
-
-*/
+  const toast = createStandaloneToast()
 
   const wave = async () => {
+    setIsLoading(true);
     try {
         console.log(address, stake,gift,message);
-        const waveTxn = await gameContract.wave(address, stake,gift, message );
+        const waveTxn = await gameContract.wave(address, stake,gift, message,hasENS);
         console.log("Mining...", waveTxn.hash);
 
         await waveTxn.wait();
@@ -61,9 +52,15 @@ const SelectCharacter = ({gameContract, currentAccount,setCharacterNFT}) => {
 
       } catch (error) {
         console.log(error)
-        alert(`You did not fill all required fields ${error}`);
+        toast({
+          title: `${error.message}`,
+          description: 'Transaction has not been completed',
+          status: 'warning',
+          duration: 9000,
+          isClosable: true,
+        })
       }
-
+      setIsLoading(false);
   };
 
 
@@ -94,26 +91,44 @@ const SelectCharacter = ({gameContract, currentAccount,setCharacterNFT}) => {
         gameContract.off('NewWave', onNewWave);
       }
     };
+    
 // eslint-disable-next-line 
   }, [gameContract]);
   
+/*
+const checkENS = async (_ensname) => {
+  try {
+  const _addressENS = await Provider.getResolver( _ensname ) 
+if (_addressENS != null) {setaddressENS (_addressENS) }
+ } catch (error) {
+  console.log(error)
 
-
+}}
+*/
 
 function validateWalletAddress(values) {
    
     const errors = {};
       if (!values.name) {
         errors.name = 'Wallet Address is required'
-      } else if (!ethers.utils.isAddress(values.name)) {
-        errors.name = "Wallet Address is not valid"
+      } else if (!ethers.utils.isAddress(values.name)) { 
+       errors.name = "Wallet Address is not valid"       
       } else if (!values.stake) {
         errors.stake = 'Stake is required'
       } else if (isNaN(values.stake)) {
         errors.stake = 'Stake must be a Number'
+      }else if (balanceETH<(values.stake)) {
+        errors.stake = 'Stake exceeds your ETH balance'
       } else if (isNaN(values.gift)) {
         errors.gift = 'Gift must be a Number'
-      } else if (ethers.utils.isAddress(values.name) && !isNaN(values.stake) &&  !isNaN(values.gift)) {
+      }else if (balanceETH<(values.gift)) {
+        console.log("Balance is",balanceETH,values.gift+values.stake )
+        errors.gift = 'Gift exceeds your ETH balance'
+      }else if (!values.message) {
+        errors.message = 'Please include a note'
+      }else if (values.message.length>200) {
+        errors.message = 'Love note cannot be higher than 200 symbols'
+      } else if (ethers.utils.isAddress(values.name) && !isNaN(values.stake) &&  !isNaN(values.gift) && values.message.length<200 && balanceETH>values.stake) {
         setaddress(values.name);
         setstake(Number(values.stake) *1000000000);
         setgift(Number(values.gift)*1000000000);
@@ -122,29 +137,21 @@ function validateWalletAddress(values) {
       return errors
     }
 
-  
-  
 
 
-  return (
 
+    const renderContent = () => {
+      if (isLoading) {return <Center> 
+          <Spinner
+          thickness='4px'
+          speed='0.65s'
+          emptyColor='gray.200'
+          color='blue.500'
+          size='xl'
+          /></Center>} else 
+          { return(<Box>
+            <Box>
 
-    
-<Box>
-
-
-<Box>
-<Text
-      bgGradient='linear(to-l, #7928CA, #FF0080)'
-    bgClip='text'
-    fontSize='5xl'
-    fontWeight='extrabold'>
-    Propose your loved one today!
-</Text>
-
-</Box>
-
-<Box  >
 <FormControl>
 
 <Formik
@@ -163,15 +170,18 @@ function validateWalletAddress(values) {
             {({ field, form }) => (
               <FormControl isInvalid={form.errors.name && form.touched.name}>
                 <FormLabel htmlFor='name'>
-                  
+          <HStack>
                 <Text
-            bgGradient= 'linear(to-r, green.200, pink.500)'
+            bgGradient= 'linear(to-r, green.500, green.800)'
             bgClip='text'
             fontSize='2xl'
             fontWeight='bold'>
             Wallet Address ❤️
                 </Text>
-                  
+                <Tooltip label='Please enter wallet address of your partner. You might want to send some ETHs to your partner, since there are transaction fees to respond to your proposal. Both sides need to agree to mint Marriage Certificate.' fontSize='md' placement='right' shouldWrapChildren>
+                                <FcAbout/>
+                      </Tooltip>
+                  </HStack>
                   
                   </FormLabel>
                 <Input {...field} id='name' placeholder='Enter Partner*s Wallet Address'
@@ -186,15 +196,18 @@ function validateWalletAddress(values) {
             {({ field, form }) => (
               <FormControl isInvalid={form.errors.stake && form.touched.stake}>
                 <FormLabel htmlFor='stake'>
-
+                  <HStack>
                 <Text
-                      bgGradient= 'linear(to-r, green.200, pink.500)'
+                      bgGradient= 'linear(to-r, green.500, green.800)'
                       bgClip='text'
                       fontSize='2xl'
                       fontWeight='bold'>
                       Family Staking 💰
                 </Text>
-                  
+                <Tooltip label='This is your Family Staking to ensure that both sides are committed to the Marriage. In case of divorce this value will be split between partners. You can also jointly send ETHs from the Family Staking to make Money Transfers.' fontSize='md' placement='right' shouldWrapChildren>
+                                <FcAbout/>
+                      </Tooltip>
+                  </HStack>
                   
                   </FormLabel>
                 <Input {...field} id='stake' placeholder='Enter Marriage Staking'
@@ -209,15 +222,19 @@ function validateWalletAddress(values) {
             {({ field, form }) => (
               <FormControl isInvalid={form.errors.gift && form.touched.gift}>
                 <FormLabel htmlFor='gift'>
-                <Text
-                      bgGradient= 'linear(to-r, green.200, pink.500)'
+                <HStack> 
+                               <Text
+                      bgGradient= 'linear(to-r, green.500, green.800)'
                       bgClip='text'
                       fontSize='2xl'
                       fontWeight='bold'>
                       Gift to your Partner 💍
                 </Text>
                   
-                  
+                <Tooltip label='If the proposal is accepted Gift amount will be sent to your Partner from your wallet. It is like giving Diamond Ring 💍.' fontSize='md' placement='right' shouldWrapChildren>
+                                <FcAbout/>
+                      </Tooltip>
+                  </HStack>
                   </FormLabel>
                 <Input {...field} id='gift' placeholder='Enter Gift to Partner'
                />
@@ -230,18 +247,23 @@ function validateWalletAddress(values) {
             {({ field, form }) => (
               <FormControl isInvalid={form.errors.message && form.touched.message}>
                 <FormLabel htmlFor='message'>
+                <HStack>
 
                 <Text
-                      bgGradient= 'linear(to-r, green.200, pink.500)'
+                      bgGradient= 'linear(to-r, green.500, green.800)'
                       bgClip='text'
                       fontSize='2xl'
                       fontWeight='bold'>
                       Include your love note! 
                 </Text>
+                <Tooltip label='Include memorable message to your partner that will be stored on Ethereum chain forever!' fontSize='md' placement='right' shouldWrapChildren>
+                                <FcAbout/>
+                      </Tooltip>
+                  </HStack>
         
                   
                   </FormLabel>
-                <Input {...field} id='gift' placeholder='Write your message to a loved one'
+                <Input {...field} id='message' placeholder='Write your message to a loved one. Max 200 symbols.'
                />
                 <FormErrorMessage>{form.errors.message}</FormErrorMessage>
               </FormControl>
@@ -277,7 +299,44 @@ function validateWalletAddress(values) {
                                     Submit
           
           </Box>
-      
+          </Box>)
+       
+          }
+        
+        
+        
+        }
+
+
+  return (
+
+    
+<Box>
+
+<Box>
+<Text
+      bgGradient='linear(to-l, #7928CA, #FF0080)'
+    bgClip='text'
+    fontSize='5xl'
+    fontWeight='extrabold'>
+    Propose your loved one on CryptoMarry.
+</Text>
+
+</Box>
+
+<Box>
+<Text
+    bgGradient='linear(to-l, #7928CA, #FF0080)'
+    bgClip='text'
+    fontSize='2xl'
+    fontWeight='extrabold'>
+    ENS status:
+</Text>
+<ENScheck Provider={Provider} currentAccount={currentAccount} hasENS={hasENS} sethasENS = {sethasENS}/>
+
+</Box>
+
+{renderContent()}
 
 </Box>
   );
