@@ -2,13 +2,19 @@ import { ColorModeScript } from '@chakra-ui/react';
 import React, { StrictMode } from 'react';
 import ReactDOM from 'react-dom';
 import App from './App';
+import MainContextProvider from './Contexts/MainContext';
+import ContractContextProvider from './Contexts/Contract';
 import reportWebVitals from './reportWebVitals';
 import * as serviceWorker from './serviceWorker';
 
 ReactDOM.render(
   <StrictMode>
     <ColorModeScript />
-    <App />
+    <ContractContextProvider>
+      <MainContextProvider>
+        <App />
+      </MainContextProvider>
+    </ContractContextProvider>
   </StrictMode>,
   document.getElementById('root')
 );
