@@ -2,7 +2,7 @@
 import {
     Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel, Box, Button, Center, Container, Flex, Heading, Image, Stack, Text, Wrap
 } from "@chakra-ui/react";
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { contractContext } from "../../Contexts/Contract";
 import { mainContext } from "../../Contexts/MainContext";
 import { Blob } from "../../Blob";
@@ -18,10 +18,11 @@ const RenderContent2 = () => {
         currentAccount, ethRequestCurrentAccount, 
         familyStats, Provider, setProvider, 
         setfamilyStats, userBeenProposed, setuserBeenProposed,
-        wrongnetwork, setwrongnetwork, characterNFT, setCharacterNFT
+        wrongnetwork, setwrongnetwork, characterNFT, setCharacterNFT,
+        balanceETH, setbalanceETH
     } = useContext(mainContext);
     const { ContractAddress, gameContract, setGameContract } = useContext(contractContext);
-
+    const [Signer,setSigner] =useState(null);
     const connectWalletAction = async (method) => {
         await ethRequestCurrentAccount(method);
         window.location.reload();
@@ -602,10 +603,7 @@ const RenderContent2 = () => {
             spacing={{ base: 8, md: 10 }}
             py={{ base: 20, md: 28 }}
           >
-            <SelectCharacter
-              gameContract={gameContract}
-              setCharacterNFT={setCharacterNFT}
-              currentAccount={currentAccount}
+            <SelectCharacter balanceETH={balanceETH} gameContract={gameContract} Provider = {Provider} setCharacterNFT={setCharacterNFT} currentAccount={currentAccount} 
             />
           </Stack>
         </Container>
@@ -625,13 +623,7 @@ const RenderContent2 = () => {
             spacing={{ base: 8, md: 10 }}
             py={{ base: 20, md: 28 }}
           >
-            <Arena
-              gameContract={gameContract}
-              Provider={Provider}
-              currentAccount={currentAccount}
-              userBeenProposed={userBeenProposed}
-              setuserBeenProposed={setuserBeenProposed}
-            />
+            <Arena Signer = {Signer} gameContract={gameContract}  Provider = {Provider} currentAccount={currentAccount} userBeenProposed={userBeenProposed} setuserBeenProposed={setuserBeenProposed}/>
           </Stack>
         </Container>
       );
@@ -650,12 +642,7 @@ const RenderContent2 = () => {
             spacing={{ base: 8, md: 10 }}
             py={{ base: 20, md: 28 }}
           >
-            <Execute
-              gameContract={gameContract}
-              currentAccount={currentAccount}
-              characterNFT={characterNFT}
-              setCharacterNFT={setCharacterNFT}
-            />
+            <Execute balanceETH = {balanceETH} Signer = {Signer} gameContract={gameContract} currentAccount={currentAccount} characterNFT={characterNFT} setCharacterNFT={setCharacterNFT} />
           </Stack>
         </Container>
       );

@@ -362,6 +362,7 @@ function App() {
           height={'80px'}
         >
           <Container
+            flex ='1'
             as={Stack}
             maxW={"6xl"}
             py={6}

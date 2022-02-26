@@ -1,71 +1,70 @@
-import {
-  Box, FormControl, FormErrorMessage, FormLabel, Input,
-  Text
-} from '@chakra-ui/react';
-import { ethers } from 'ethers';
-import { Field, Form, Formik } from 'formik';
 import React, { useEffect, useState } from 'react';
+import { ethers } from 'ethers';
 import { transformCharacterData } from '../../constants';
-import Loader from '../SmallComponents/Loader';
+import ENScheck from "../../components/ENScheck";
+
+import {
+    FormControl,
+    FormLabel,
+    FormErrorMessage,
+    Input,
+    Text,
+    Box,
+    createStandaloneToast,
+    Spinner,
+    Center
+    
+
+  } from '@chakra-ui/react'
+
+  import { Formik, Form, Field} from 'formik';
 
 
-
-
-const SelectCharacter = ({gameContract, currentAccount, setCharacterNFT}) => {
-  console.log(gameContract, ' ucasdasdasdasdsahtu')
+const SelectCharacter = ({balanceETH, gameContract,Provider, currentAccount,setCharacterNFT}) => {
+  
   //const [gameContract, setgameContract] = useState(null);
   const [address, setaddress] = useState("");
   const [stake, setstake] = useState("");
-  const [gift, setgift] = useState("0");
+  const [gift, setgift] = useState(0);
   const [message, setMessage] = useState("");
+  const [hasENS, sethasENS] = useState(0);
+  //const [addressENS, setaddressENS] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
  
-/*
-  // UseEffect
-  useEffect(() => {
-    const { ethereum } = window;
-  
-    if (ethereum) {
-      const provider = new ethers.providers.Web3Provider(ethereum);
-      const signer = provider.getSigner();
-      const gameContract = new ethers.Contract(
-        ContractAddress,
-        myEpicGame.abi,
-        signer
-      )
-      setgameContract(gameContract) 
+  console.log("updated ENS status", hasENS)
 
+  const toast = createStandaloneToast()
 
-    } else {
-      console.log('Ethereum object not found');
-    }
-  }, [ContractAddress]);
-
-
-*/
-
-  const [showLoader, setShowLoader] = useState(false)
   const wave = async () => {
+    setIsLoading(true);
     try {
-      console.log(address, stake,gift,message);
-      console.log(1)
-      const waveTxn = await gameContract.wave(address, stake,gift, message );
-      console.log(2)
-      console.log("Mining...", waveTxn.hash);
-      setShowLoader(true)
-      await waveTxn.wait();
-      console.log("Mined -- ", waveTxn.hash);
-      setShowLoader(false)
+        console.log(address, stake,gift,message);
+        const waveTxn = await gameContract.wave(address, stake,gift, message,hasENS);
+        console.log("Mining...", waveTxn.hash);
 
-    } catch (error) {
-      console.log(error)
-      alert(`You did not fill all required fields ${error}`);
+        await waveTxn.wait();
+        console.log("Mined -- ", waveTxn.hash);
+
+      } catch (error) {
+        console.log(error)
+        toast({
+          title: `${error.message}`,
+          description: 'Transaction has not been completed',
+          status: 'warning',
+          duration: 9000,
+          isClosable: true,
+        })
       }
+      setIsLoading(false);
   };
+
 
   useEffect(() => {
     
+
   const onNewWave = async (id, waver, proposed, sender, message, time,vid) => {
     console.log("Incoming message with:",id, waver,proposed, sender,message,time,vid);
+    console.log(currentAccount)
     if (sender.toUpperCase() === currentAccount.toUpperCase()) {
       const txn = await gameContract.checkIfUserHasProposed();
       if (txn.ProposalStatus!==0){
@@ -87,26 +86,44 @@ const SelectCharacter = ({gameContract, currentAccount, setCharacterNFT}) => {
         gameContract.off('NewWave', onNewWave);
       }
     };
+    
 // eslint-disable-next-line 
   }, [gameContract]);
   
+/*
+const checkENS = async (_ensname) => {
+  try {
+  const _addressENS = await Provider.getResolver( _ensname ) 
+if (_addressENS != null) {setaddressENS (_addressENS) }
+ } catch (error) {
+  console.log(error)
 
-
+}}
+*/
 
 function validateWalletAddress(values) {
    
     const errors = {};
       if (!values.name) {
         errors.name = 'Wallet Address is required'
-      } else if (!ethers.utils.isAddress(values.name)) {
-        errors.name = "Wallet Address is not valid"
+      } else if (!ethers.utils.isAddress(values.name)) { 
+       errors.name = "Wallet Address is not valid"       
       } else if (!values.stake) {
         errors.stake = 'Stake is required'
       } else if (isNaN(values.stake)) {
         errors.stake = 'Stake must be a Number'
+      }else if (balanceETH<(values.stake)) {
+        errors.stake = 'Stake exceeds your ETH balance'
       } else if (isNaN(values.gift)) {
         errors.gift = 'Gift must be a Number'
-      } else if (ethers.utils.isAddress(values.name) && !isNaN(values.stake) &&  !isNaN(values.gift)) {
+      }else if (balanceETH<(values.gift)) {
+        console.log("Balance is",balanceETH,values.gift+values.stake )
+        errors.gift = 'Gift exceeds your ETH balance'
+      }else if (!values.message) {
+        errors.message = 'Please include a note'
+      }else if (values.message.length>200) {
+        errors.message = 'Love note cannot be higher than 200 symbols'
+      } else if (ethers.utils.isAddress(values.name) && !isNaN(values.stake) &&  !isNaN(values.gift) && values.message.length<200 && balanceETH>values.stake ) {
         setaddress(values.name);
         setstake(Number(values.stake) *1000000000);
         setgift(Number(values.gift)*1000000000);
@@ -115,134 +132,194 @@ function validateWalletAddress(values) {
       return errors
     }
 
-  
-  
 
 
-  return ( 
-    <Box>
-      {showLoader ? (
-        <Loader title='Minning' />
-      ) : (
-        <>
-      <Box>
-        <Text
-          bgGradient='linear(to-l, #7928CA, #FF0080)'
-          bgClip='text'
-          fontSize='5xl'
-          fontWeight='extrabold'>
-          Propose your loved one today!
-        </Text>
-      </Box>
-      <Box  >
-        <FormControl>
-          <Formik
-            initialValues={{ name: '', stake: '', gift: '0', message:''}}
-            validate={validateWalletAddress}
-            onSubmit={(values, actions) => {
-              setTimeout(() => {
-                alert(JSON.stringify(values, null, 2))
-                actions.setSubmitting(false)
-              }, 1000)
-            }}
-          >
-            {(props) => (
-              <Form>
-                <Field name='name'>
-                  {({ field, form }) => (
-                    <FormControl isInvalid={form.errors.name && form.touched.name}>
-                      <FormLabel htmlFor='name'> 
-                        <Text
-                          bgGradient= 'linear(to-r, green.200, pink.500)'
-                          bgClip='text'
-                          fontSize='2xl'
-                          fontWeight='bold'>
-                          Wallet Address ❤️
-                        </Text>
-                      </FormLabel>
-                      <Input {...field} id='name' placeholder='Enter Partner*s Wallet Address'/>
-                      <FormErrorMessage>{form.errors.name}</FormErrorMessage>
-                    </FormControl>
-                  )}
-                </Field>
-                <Field name='stake'>
-                  {({ field, form }) => (
-                    <FormControl isInvalid={form.errors.stake && form.touched.stake}>
-                      <FormLabel htmlFor='stake'>
-                        <Text
-                          bgGradient= 'linear(to-r, green.200, pink.500)'
-                          bgClip='text'
-                          fontSize='2xl'
-                          fontWeight='bold'>
-                          Family Staking 💰
-                        </Text>
-                        </FormLabel>
-                      <Input {...field} id='stake' placeholder='Enter Marriage Staking'
-                      />
-                      <FormErrorMessage>{form.errors.stake}</FormErrorMessage>
-                    </FormControl>
-                  )}
-                </Field>
-              <Field name='gift'>
-                {({ field, form }) => (
-                  <FormControl isInvalid={form.errors.gift && form.touched.gift}>
-                    <FormLabel htmlFor='gift'>
-                      <Text
-                        bgGradient= 'linear(to-r, green.200, pink.500)'
-                        bgClip='text'
-                        fontSize='2xl'
-                        fontWeight='bold'>
-                        Gift to your Partner 💍
-                      </Text>
-                    </FormLabel>
-                    <Input {...field} id='gift' placeholder='Enter Gift to Partner'/>
-                    <FormErrorMessage>{form.errors.gift}</FormErrorMessage>
-                  </FormControl>
-                )}
-              </Field>
-              <Field name='message'>
-                {({ field, form }) => (
-                  <FormControl isInvalid={form.errors.message && form.touched.message}>
-                    <FormLabel htmlFor='message'>
-                      <Text
-                        bgGradient= 'linear(to-r, green.200, pink.500)'
-                        bgClip='text'
-                        fontSize='2xl'
-                        fontWeight='bold'>
-                        Include your love note! 
-                      </Text>
-                    </FormLabel>
-                    <Input {...field} id='gift' placeholder='Write your message to a loved one'/>
-                    <FormErrorMessage>{form.errors.message}</FormErrorMessage>
-                  </FormControl>
-                )}
-              </Field>
-                </Form>
+
+    const renderContent = () => {
+      if (isLoading) {return <Center> 
+          <Spinner
+          thickness='4px'
+          speed='0.65s'
+          emptyColor='gray.200'
+          color='blue.500'
+          size='xl'
+          /></Center>} else 
+          { return(<Box>
+            <Box>
+
+<FormControl>
+
+<Formik
+      initialValues={{ name: '', stake: '', gift: '0', message:''}}
+      validate={validateWalletAddress}
+      onSubmit={(values, actions) => {
+        setTimeout(() => {
+          alert(JSON.stringify(values, null, 2))
+          actions.setSubmitting(false)
+        }, 1000)
+      }}
+    >
+      {(props) => (
+        <Form>
+          <Field name='name'>
+            {({ field, form }) => (
+              <FormControl isInvalid={form.errors.name && form.touched.name}>
+                <FormLabel htmlFor='name'>
+                  
+                <Text
+            bgGradient= 'linear(to-r, green.200, pink.500)'
+            bgClip='text'
+            fontSize='2xl'
+            fontWeight='bold'>
+            Wallet Address ❤️
+                </Text>
+                  
+                  
+                  </FormLabel>
+                <Input {...field} id='name' placeholder='Enter Partner*s Wallet Address'
+                 />
+                <FormErrorMessage>{form.errors.name}</FormErrorMessage>
+              </FormControl>
             )}
-          </Formik>
+          </Field>
+
+        
+          <Field name='stake'>
+            {({ field, form }) => (
+              <FormControl isInvalid={form.errors.stake && form.touched.stake}>
+                <FormLabel htmlFor='stake'>
+
+                <Text
+                      bgGradient= 'linear(to-r, green.200, pink.500)'
+                      bgClip='text'
+                      fontSize='2xl'
+                      fontWeight='bold'>
+                      Family Staking 💰
+                </Text>
+                  
+                  
+                  </FormLabel>
+                <Input {...field} id='stake' placeholder='Enter Marriage Staking'
+                />
+                <FormErrorMessage>{form.errors.stake}</FormErrorMessage>
+              </FormControl>
+            )}
+          </Field>
+
+
+          <Field name='gift'>
+            {({ field, form }) => (
+              <FormControl isInvalid={form.errors.gift && form.touched.gift}>
+                <FormLabel htmlFor='gift'>
+                <Text
+                      bgGradient= 'linear(to-r, green.200, pink.500)'
+                      bgClip='text'
+                      fontSize='2xl'
+                      fontWeight='bold'>
+                      Gift to your Partner 💍
+                </Text>
+                  
+                  
+                  </FormLabel>
+                <Input {...field} id='gift' placeholder='Enter Gift to Partner'
+               />
+                <FormErrorMessage>{form.errors.gift}</FormErrorMessage>
+              </FormControl>
+            )}
+          </Field>
+
+          <Field name='message'>
+            {({ field, form }) => (
+              <FormControl isInvalid={form.errors.message && form.touched.message}>
+                <FormLabel htmlFor='message'>
+
+                <Text
+                      bgGradient= 'linear(to-r, green.200, pink.500)'
+                      bgClip='text'
+                      fontSize='2xl'
+                      fontWeight='bold'>
+                      Include your love note! 
+                </Text>
+        
+                  
+                  </FormLabel>
+                <Input {...field} id='message' placeholder='Write your message to a loved one. Max 200 symbols.'
+               />
+                <FormErrorMessage>{form.errors.message}</FormErrorMessage>
+              </FormControl>
+            )}
+          </Field>
+            </Form>
+      )}
+         </Formik>
+
         </FormControl>
-        </Box>
+
+          </Box>
+
           <Box  p={5} color='white'>
-        </Box>  
-        <Box
-        as='button'
-          p={3}
-          color='white'
-          fontWeight='bold'
-          borderRadius='md'
-          borderWidth='2px'
-          maxW='md'
-          bgGradient='linear(to-r, teal.500, green.500)'
-          onClick={wave}
-          //isLoading={props.isSubmitting}
-          _hover={{
-          bgGradient: 'linear(to-r, red.500, yellow.500)',  
-          }}
-          >
-          Submit 
-        </Box>
-        </>)} 
-    </Box>
-  )
-}
+        
+          </Box>  
+
+          <Box
+                                    as='button'
+                                    p={3}
+                                    color='white'
+                                    fontWeight='bold'
+                                    borderRadius='md'
+                                    borderWidth='2px'
+                                    maxW='md'
+                                    bgGradient='linear(to-r, teal.500, green.500)'
+                                    onClick={wave}
+                                    //isLoading={props.isSubmitting}
+                                    _hover={{
+                                    bgGradient: 'linear(to-r, red.500, yellow.500)',  
+                                    }}
+                                    >
+                                    Submit
+          
+          </Box>
+          </Box>)
+       
+          }
+        
+        
+        
+        }
+
+
+  return (
+
+    
+<Box>
+
+<Box>
+<Text
+      bgGradient='linear(to-l, #7928CA, #FF0080)'
+    bgClip='text'
+    fontSize='5xl'
+    fontWeight='extrabold'>
+    Propose your loved one on CryptoMarry.
+</Text>
+
+</Box>
+
+<Box>
+<Text
+    bgGradient='linear(to-l, #7928CA, #FF0080)'
+    bgClip='text'
+    fontSize='2xl'
+    fontWeight='extrabold'>
+    ENS status:
+</Text>
+<ENScheck Provider={Provider} currentAccount={currentAccount} hasENS={hasENS} sethasENS = {sethasENS}/>
+
+</Box>
+
+{renderContent()}
+
+</Box>
+  );
+
+  }
 export default SelectCharacter;
