@@ -11,7 +11,9 @@ const INIT_STATE = {
   characterNFT: null,
   userBeenProposed: null,
   Provider: null,
-  balanceETH: ""
+  balanceETH: "",
+  mintedNFT: null, 
+  Signer: null
 };
 
 const reducer = (state = INIT_STATE, action) => {
@@ -32,6 +34,10 @@ const reducer = (state = INIT_STATE, action) => {
       return { ...state, familyStats: action.payload };
     case "SET_BALANCE_ETH":
       return { ...state, balanceETH: action.payload };
+    case "SET_MINTED_NFT":
+      return { ...state, mintedNFT: action.payload };
+    case "SET_SIGNER":
+      return { ...state, Signer: action.payload };
   }
 };
 
@@ -102,6 +108,13 @@ const MainContextProvider = ({ children }) => {
     })
   }
 
+  function setMintedNFT(arg){
+    dispatch({
+      type: 'SET_MINTED_NFT',
+      payload: arg
+    })
+  }
+
   function setCharacterNFT(arg) {
     dispatch({
       type: "SET_CHARACTER_NFT",
@@ -138,6 +151,13 @@ const MainContextProvider = ({ children }) => {
     });
   };
 
+  function setSigner(arg) {
+    dispatch({
+      type: 'SET_SIGNER',
+      payload: arg
+    });
+  };
+
   console.log(state, " state");
   const values = {
     currentAccount: state.currentAccount,
@@ -148,6 +168,10 @@ const MainContextProvider = ({ children }) => {
     Provider: state.Provider,
     wrongnetwork: state.wrongnetwork,
     balanceETH: state.balanceETH,
+    mintedNFT: state.mintedNFT,
+    Signer: state.Signer,
+    setSigner,
+    setMintedNFT,
     setbalanceETH,
     ethRequestCurrentAccount,
     ethRequestChainId,

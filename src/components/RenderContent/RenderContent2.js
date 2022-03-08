@@ -19,10 +19,10 @@ const RenderContent2 = () => {
         familyStats, Provider, setProvider, 
         setfamilyStats, userBeenProposed, setuserBeenProposed,
         wrongnetwork, setwrongnetwork, characterNFT, setCharacterNFT,
-        balanceETH, setbalanceETH
+        balanceETH, setbalanceETH, Signer,
     } = useContext(mainContext);
     const { ContractAddress, gameContract, setGameContract } = useContext(contractContext);
-    const [Signer,setSigner] =useState(null);
+    // const [Signer,setSigner] = useState(null);
     const connectWalletAction = async (method) => {
         await ethRequestCurrentAccount(method);
         window.location.reload();

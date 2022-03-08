@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import { transformCharacterData } from '../../constants';
 import ENScheck from "../../components/ENScheck";
+import { 
+  FcAbout,
+} from 'react-icons/fc';
 
 import {
     FormControl,
@@ -12,7 +15,9 @@ import {
     Box,
     createStandaloneToast,
     Spinner,
-    Center
+    Center,
+    Tooltip,
+    HStack
     
 
   } from '@chakra-ui/react'
@@ -62,10 +67,10 @@ const SelectCharacter = ({balanceETH, gameContract,Provider, currentAccount,setC
   useEffect(() => {
     
 
-  const onNewWave = async (id, waver, proposed, sender, message, time,vid) => {
-    console.log("Incoming message with:",id, waver,proposed, sender,message,time,vid);
+  const onNewWave = async (id, waver, proposed, message, time,vid) => {
+    console.log("Incoming message with:",id, waver,proposed, message,time,vid);
     console.log(currentAccount)
-    if (sender.toUpperCase() === currentAccount.toUpperCase()) {
+    if (gameContract && (waver.toUpperCase() === currentAccount.toUpperCase() || proposed.toUpperCase() === currentAccount.toUpperCase())) {
       const txn = await gameContract.checkIfUserHasProposed();
       if (txn.ProposalStatus!==0){
         console.log('Status has been updated');
@@ -123,7 +128,7 @@ function validateWalletAddress(values) {
         errors.message = 'Please include a note'
       }else if (values.message.length>200) {
         errors.message = 'Love note cannot be higher than 200 symbols'
-      } else if (ethers.utils.isAddress(values.name) && !isNaN(values.stake) &&  !isNaN(values.gift) && values.message.length<200 && balanceETH>values.stake ) {
+      } else if (ethers.utils.isAddress(values.name) && !isNaN(values.stake) &&  !isNaN(values.gift) && values.message.length<200 && balanceETH>values.stake) {
         setaddress(values.name);
         setstake(Number(values.stake) *1000000000);
         setgift(Number(values.gift)*1000000000);
@@ -165,15 +170,18 @@ function validateWalletAddress(values) {
             {({ field, form }) => (
               <FormControl isInvalid={form.errors.name && form.touched.name}>
                 <FormLabel htmlFor='name'>
-                  
+          <HStack>
                 <Text
-            bgGradient= 'linear(to-r, green.200, pink.500)'
+            bgGradient= 'linear(to-r, green.500, green.800)'
             bgClip='text'
             fontSize='2xl'
             fontWeight='bold'>
             Wallet Address ❤️
                 </Text>
-                  
+                <Tooltip label='Please enter wallet address of your partner. You might want to send some ETHs to your partner, since there are transaction fees to respond to your proposal. Both sides need to agree to mint Marriage Certificate.' fontSize='md' placement='right' shouldWrapChildren>
+                                <FcAbout/>
+                      </Tooltip>
+                  </HStack>
                   
                   </FormLabel>
                 <Input {...field} id='name' placeholder='Enter Partner*s Wallet Address'
@@ -188,15 +196,18 @@ function validateWalletAddress(values) {
             {({ field, form }) => (
               <FormControl isInvalid={form.errors.stake && form.touched.stake}>
                 <FormLabel htmlFor='stake'>
-
+                  <HStack>
                 <Text
-                      bgGradient= 'linear(to-r, green.200, pink.500)'
+                      bgGradient= 'linear(to-r, green.500, green.800)'
                       bgClip='text'
                       fontSize='2xl'
                       fontWeight='bold'>
                       Family Staking 💰
                 </Text>
-                  
+                <Tooltip label='This is your Family Staking to ensure that both sides are committed to the Marriage. In case of divorce this value will be split between partners. You can also jointly send ETHs from the Family Staking to make Money Transfers.' fontSize='md' placement='right' shouldWrapChildren>
+                                <FcAbout/>
+                      </Tooltip>
+                  </HStack>
                   
                   </FormLabel>
                 <Input {...field} id='stake' placeholder='Enter Marriage Staking'
@@ -211,15 +222,19 @@ function validateWalletAddress(values) {
             {({ field, form }) => (
               <FormControl isInvalid={form.errors.gift && form.touched.gift}>
                 <FormLabel htmlFor='gift'>
-                <Text
-                      bgGradient= 'linear(to-r, green.200, pink.500)'
+                <HStack> 
+                               <Text
+                      bgGradient= 'linear(to-r, green.500, green.800)'
                       bgClip='text'
                       fontSize='2xl'
                       fontWeight='bold'>
                       Gift to your Partner 💍
                 </Text>
                   
-                  
+                <Tooltip label='If the proposal is accepted Gift amount will be sent to your Partner from your wallet. It is like giving Diamond Ring 💍.' fontSize='md' placement='right' shouldWrapChildren>
+                                <FcAbout/>
+                      </Tooltip>
+                  </HStack>
                   </FormLabel>
                 <Input {...field} id='gift' placeholder='Enter Gift to Partner'
                />
@@ -232,14 +247,19 @@ function validateWalletAddress(values) {
             {({ field, form }) => (
               <FormControl isInvalid={form.errors.message && form.touched.message}>
                 <FormLabel htmlFor='message'>
+                <HStack>
 
                 <Text
-                      bgGradient= 'linear(to-r, green.200, pink.500)'
+                      bgGradient= 'linear(to-r, green.500, green.800)'
                       bgClip='text'
                       fontSize='2xl'
                       fontWeight='bold'>
                       Include your love note! 
                 </Text>
+                <Tooltip label='Include memorable message to your partner that will be stored on Ethereum chain forever!' fontSize='md' placement='right' shouldWrapChildren>
+                                <FcAbout/>
+                      </Tooltip>
+                  </HStack>
         
                   
                   </FormLabel>

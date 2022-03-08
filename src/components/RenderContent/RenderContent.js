@@ -7,13 +7,20 @@ import { transformCharacterData } from "../../constants";
 import { contractContext } from "../../Contexts/Contract";
 import { mainContext } from "../../Contexts/MainContext";
 import myEpicGame from "../../utils/marriages.json";
-
-import { TriangleDownIcon, TriangleUpIcon } from "@chakra-ui/icons";
+import { FcAbout } from "react-icons/fc";
+import NFTPricing from "../NFTMenu";
+import {
+  TriangleDownIcon,
+  TriangleUpIcon,
+  ExternalLinkIcon,
+  ChevronDownIcon,
+} from "@chakra-ui/icons";
 import {
   Box,
   Button,
   Center,
   chakra,
+  Tabs,
   HStack,
   Image,
   Menu,
@@ -60,6 +67,13 @@ import {
   AccordionButton,
   AccordionPanel,
   AccordionIcon,
+  Tooltip,
+  VStack,
+  Link,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
 } from "@chakra-ui/react";
 import { Formik, Form, Field } from "formik";
 import { ethers } from "ethers";
@@ -78,6 +92,11 @@ const RenderContent = () => {
     characterNFT,
     balanceETH,
     setbalanceETH,
+    nftContractAddress,
+    mintedNFT,
+    setMintedNFT,
+    Signer,
+    setSigner,
   } = useContext(mainContext);
   const { ContractAddress, gameContract, setGameContract, currency } =
     useContext(contractContext);
@@ -88,19 +107,21 @@ const RenderContent = () => {
   const [marriedto, setmarriedto] = useState("");
   const [imageNFT, setimageNFT] = useState([]);
   // const [currency, setcurrency] = useState("");
+  const [policyDays, setpolicyDays] = useState(0);
   const [familyBudget, setfamilyBudget] = useState("");
   const [txarray, settxarray] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lovBalance, setlovBalance] = useState();
   const [lovBalancetimer, setlovBalancetimer] = useState();
   const [saleCap, setsaleCap] = useState();
-  const [mintedNFT, setMintedNFT] = useState();
   const [voteMessage, setvoteMessage] = useState("");
-  const [voteNumTokens, setvoteNumTokens] = useState();
+  const [voteNumTokens, setvoteNumTokens] = useState(0);
+  const [voteType, setvoteType] = useState(0);
   const [voteReceiver, setvoteReceiver] =
     useState(0x0000000000000000000000000000000000000000);
   const [voteAmount, setvvoteAmount] = useState(0);
-  const [voteEnds, setvoteEnds] = useState();
+  const [voteEnds, setvoteEnds] = useState(0);
+  const [tokenURI, settokenURI] = useState();
 
   const toast = createStandaloneToast();
   const data = React.useMemo(() => txarray, [txarray]);
@@ -207,8 +228,6 @@ const RenderContent = () => {
   // const [currentAccount, setCurrentAccount] = useState(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const cancelRef = React.useRef();
-
   const {
     isOpen: isOpen2,
     onOpen: onOpen2,
@@ -224,12 +243,6 @@ const RenderContent = () => {
     isOpen: isOpen4,
     onOpen: onOpen4,
     onClose: onClose4,
-  } = useDisclosure();
-
-  const {
-    isOpen: isOpen5,
-    onOpen: onOpen5,
-    onClose: onClose5,
   } = useDisclosure();
 
   const {
@@ -259,9 +272,10 @@ const RenderContent = () => {
   };
 
   useEffect(() => {
-    if (currentAccount && familyStats) {
+    if (familyStats && familyStats.ProposalStatus !== 0) {
       setmarriedtofunction();
     }
+
     // eslint-disable-next-line
   }, [currentAccount, familyStats]);
 
@@ -281,6 +295,7 @@ const RenderContent = () => {
        * This is the big difference. Set our gameContract in state.
        */
       setGameContract(gameContract);
+      setSigner(signer);
       setProvider(signer);
       console.log("Connected to the smart contract.");
     } else {
@@ -342,6 +357,9 @@ const RenderContent = () => {
       console.log("LOV token Timer is", txn);
       const txn3 = await gameContract.saleCap();
       setsaleCap(txn3.toNumber());
+      const txn4 = await gameContract.policyDays();
+      console.log("POLICY DAYS", txn4.toNumber());
+      setpolicyDays(txn4.toNumber());
     } catch (error) {
       console.log(error);
       toast({
@@ -389,9 +407,20 @@ const RenderContent = () => {
   const createProposal = async () => {
     setIsLoading(true);
 
+    console.log(
+      voteMessage,
+      voteType + 1,
+      voteEnds,
+      voteNumTokens,
+      voteReceiver,
+      voteAmount
+    );
+
     try {
+      console.log("TUUUUUUT3");
       const waveTxn = await gameContract.createProposal(
         voteMessage,
+        voteType + 1,
         voteEnds,
         voteNumTokens,
         voteReceiver,
@@ -400,7 +429,7 @@ const RenderContent = () => {
       console.log("Mining...", waveTxn.hash);
       await waveTxn.wait();
       console.log("Mined -- ", waveTxn.hash);
-      onClose5();
+
       fetchLovBalance();
     } catch (error) {
       console.log(error);
@@ -412,39 +441,25 @@ const RenderContent = () => {
         isClosable: true,
       });
     }
-    setIsLoading(false);
-  };
-
-  const MintCertificate = async () => {
-    setIsLoading(true);
-    try {
-      const waveTxn = await gameContract.MintCertificate();
-      console.log("Mining...", waveTxn.hash);
-      await waveTxn.wait();
-      console.log("Mined -- ", waveTxn.hash);
-      setMintedNFT(true);
-      onClose8();
-      toast({
-        title: "Status update",
-        description: "Your NFT has been minted!",
-        status: "success",
-        duration: 9000,
-        isClosable: true,
-      });
-    } catch (error) {
-      console.log(error);
-      toast({
-        title: `${error.message}`,
-        description: "Transaction has not been completed",
-        status: "warning",
-        duration: 9000,
-        isClosable: true,
-      });
-    }
+    setvoteMessage();
+    setvoteType(0);
+    setvoteEnds();
+    setvoteNumTokens();
+    setvoteReceiver(0x0000000000000000000000000000000000000000);
+    setvvoteAmount(0);
+    onClose2();
     setIsLoading(false);
   };
 
   function validateWalletAddress(values) {
+    console.log(
+      values.votetext,
+      values.voteEnds * 86400,
+      Number(values.NumTokens),
+      values.name,
+      Number(values.gift) * 1000000000,
+      "TUUUUUUUUUT"
+    );
     const errors = {};
     if (!values.votetext) {
       errors.votetext = "Voting text is required";
@@ -472,14 +487,23 @@ const RenderContent = () => {
     } else if (values.gift > familyBudget) {
       errors.gift = "Amount to be sent is higher than the Family budget";
     } else if (
-      values.votetext.length > 0 &&
-      ethers.utils.isAddress(values.name) &&
-      !isNaN(values.voteEnds) &&
-      !isNaN(values.NumTokens) &&
-      !isNaN(values.gift) &&
-      values.gift < familyBudget &&
-      lovBalance > values.NumTokens
+      values.votetext.length > 0
+      // ethers.utils.isAddress(values.name) &&
+      // !isNaN(values.voteEnds) &&
+      // !isNaN(values.NumTokens) &&
+      // !isNaN(values.gift) &&
+      // values.gift < familyBudget &&
+      // lovBalance >= values.NumTokens
     ) {
+      console.log(
+        values.votetext,
+        values.voteEnds * 86400,
+        Number(values.NumTokens),
+        values.name,
+        Number(values.gift) * 1000000000,
+        "TUUUUUUUUUT222222"
+      );
+
       setvoteMessage(values.votetext);
       setvoteEnds(values.voteEnds * 86400);
       setvoteNumTokens(Number(values.NumTokens));
@@ -511,28 +535,6 @@ const RenderContent = () => {
       });
     }
     setIsLoading(false);
-  };
-
-  const ProposeDivorce = async () => {
-    setIsLoading(true);
-    try {
-      const waveTxn = await gameContract.divorceproposal(message);
-      console.log("Mining...", waveTxn.hash);
-
-      await waveTxn.wait();
-      console.log("Mined -- ", waveTxn.hash);
-    } catch (error) {
-      console.log(error);
-      toast({
-        title: `${error.message}`,
-        description: "Transaction has not been completed",
-        status: "warning",
-        duration: 9000,
-        isClosable: true,
-      });
-    }
-    setIsLoading(false);
-    onClose2();
   };
 
   const getTransactions = async () => {
@@ -590,7 +592,7 @@ const RenderContent = () => {
       const signer = provider.getSigner();
       const NFTContract = new ethers.Contract(
         //"0x8a8771636019e218aAf0b50E7cB90BaA3A4E9301",
-        "0x1ef0ffb134e801e7Fc9d11d0620f093Dd7358320",
+        nftContractAddress,
         ABI,
         signer
       );
@@ -600,12 +602,15 @@ const RenderContent = () => {
         familyStats.proposed
       );
       console.log("Token ID", txn);
+      settokenURI(txn.toNumber());
       const txn2 = await NFTContract.tokenURI(txn);
       console.log(txn2);
       const decodedtxn = txn2.slice(29, txn2.length);
       let base64ToString = atob(decodedtxn);
       const jsonobject = JSON.parse(base64ToString);
       setimageNFT(jsonobject);
+      console.log("JSON", jsonobject);
+      console.log("JSON Attributes", jsonobject.attributes[1].value);
       console.log(jsonobject.image);
       toast({
         title: "Status Update",
@@ -628,22 +633,13 @@ const RenderContent = () => {
   };
 
   const texttransformer = () => {
-    if (familyStats.ProposalStatus === 1 && familyStats.DivorceStatus === 0) {
+    if (familyStats.ProposalStatus === 1) {
       return "Proposal Initiated";
-    } else if (
-      familyStats.ProposalStatus === 2 &&
-      familyStats.DivorceStatus === 0
-    ) {
+    } else if (familyStats.ProposalStatus === 2) {
       return "Proposal Cancelled";
-    } else if (
-      familyStats.ProposalStatus === 3 &&
-      familyStats.DivorceStatus === 0
-    ) {
+    } else if (familyStats.ProposalStatus === 3) {
       return "Proposal Accepted";
-    } else if (
-      familyStats.ProposalStatus === 4 &&
-      familyStats.DivorceStatus === 0
-    ) {
+    } else if (familyStats.ProposalStatus === 4) {
       return (
         <HStack>
           <Text color="white" fontSize="md">
@@ -658,53 +654,6 @@ const RenderContent = () => {
           </Text>
         </HStack>
       );
-    } else if (
-      familyStats.ProposalStatus === 4 &&
-      familyStats.DivorceStatus === 1
-    ) {
-      return (
-        <HStack>
-          <Text color="white" fontSize="md">
-            Divorce
-          </Text>
-          <Text color="white" fontSize="md">
-            with
-          </Text>
-          <Text color="white" fontSize="md">
-            {marriedto.slice(0, 4)}...
-            {marriedto.slice(marriedto.length - 4, marriedto.length)}
-          </Text>
-          <Text color="white" fontSize="md">
-            initiated
-          </Text>
-        </HStack>
-      );
-    } else if (
-      familyStats.ProposalStatus === 4 &&
-      familyStats.DivorceStatus === 2
-    ) {
-      return (
-        <HStack>
-          <Text color="white" fontSize="md">
-            Divorce
-          </Text>
-          <Text color="white" fontSize="md">
-            with
-          </Text>
-          <Text color="white" fontSize="md">
-            {marriedto.slice(0, 4)}...
-            {marriedto.slice(marriedto.length - 4, marriedto.length)}
-          </Text>
-          <Text color="white" fontSize="md">
-            initiated
-          </Text>
-        </HStack>
-      );
-    } else if (
-      familyStats.ProposalStatus === 4 &&
-      familyStats.DivorceStatus === 3
-    ) {
-      return "Divorced.";
     }
   };
 
@@ -804,33 +753,33 @@ const RenderContent = () => {
         ) : null}
         <Box>
           <Menu>
-            <MenuButton
-              as={Button}
-              colorScheme="pink"
-              px={4}
-              py={2}
-              transition="all 0.2s"
-              borderRadius="md"
-              borderWidth="1px"
-              _hover={{ bg: "gray.400" }}
-              _focus={{ boxShadow: "outline" }}
-            >
-              <HStack spacing={1}>
-                <Text color="white" fontSize="md" fontWeight="medium" mr="2">
-                  {currentAccount.slice(0, 4)}...
-                  {currentAccount.slice(
-                    currentAccount.length - 4,
-                    currentAccount.length
-                  )}
-                </Text>
-                <Identicon currentAccount={currentAccount} />
-              </HStack>
-            </MenuButton>
+            {currentAccount ? (
+              <MenuButton
+                as={Button}
+                colorScheme="pink"
+                px={4}
+                py={2}
+                transition="all 0.2s"
+                borderRadius="md"
+                borderWidth="1px"
+                _hover={{ bg: "gray.400" }}
+                _focus={{ boxShadow: "outline" }}
+                rightIcon={<ChevronDownIcon />}
+              >
+                <HStack spacing={1}>
+                  <Text color="white" fontSize="md" fontWeight="medium" mr="2">
+                    {currentAccount.slice(0, 4)}...
+                    {currentAccount.slice(
+                      currentAccount.length - 4,
+                      currentAccount.length
+                    )}
+                  </Text>
+                  <Identicon currentAccount={currentAccount} />
+                </HStack>
+              </MenuButton>
+            ) : null}
             <MenuList>
               <MenuGroup title="">
-                {familyStats.ProposalStatus === 5 ? (
-                  <MenuItem>Initiate Family Voting</MenuItem>
-                ) : null}
                 {familyStats.ProposalStatus === 4 ? (
                   <MenuItem onClick={onOpen}>
                     Add Stake
@@ -841,7 +790,21 @@ const RenderContent = () => {
                     >
                       <ModalOverlay />
                       <ModalContent>
-                        <ModalHeader>Enter {currency} value</ModalHeader>
+                        <ModalHeader>
+                          <HStack>
+                            <Text>Enter {currency} value.</Text>
+
+                            <Tooltip
+                              label="This amount will be sent to the Family Budget."
+                              fontSize="md"
+                              placement="right"
+                              shouldWrapChildren
+                            >
+                              <FcAbout />
+                            </Tooltip>
+                          </HStack>
+                        </ModalHeader>
+
                         <ModalCloseButton />
                         <ModalBody>
                           {!isLoading ? (
@@ -861,6 +824,7 @@ const RenderContent = () => {
                             </Box>
                           ) : (
                             <Center>
+                              {" "}
                               <Spinner
                                 thickness="4px"
                                 speed="0.65s"
@@ -895,7 +859,20 @@ const RenderContent = () => {
                     >
                       <ModalOverlay />
                       <ModalContent>
-                        <ModalHeader>Enter {currency} value</ModalHeader>
+                        <ModalHeader>
+                          <HStack>
+                            <Text>Enter {currency} value.</Text>
+
+                            <Tooltip
+                              label="You will get 100 LOV Tokens for 1 ETH"
+                              fontSize="md"
+                              placement="right"
+                              shouldWrapChildren
+                            >
+                              <FcAbout />
+                            </Tooltip>
+                          </HStack>
+                        </ModalHeader>
                         <ModalCloseButton />
                         <ModalBody>
                           {!isLoading ? (
@@ -958,7 +935,7 @@ const RenderContent = () => {
 
                 {familyStats.ProposalStatus === 4 ? (
                   <MenuItem onClick={onOpen7}>
-                    Claim Lov Token
+                    Claim LOV Token
                     <Modal
                       finalFocusRef={finalRef}
                       isOpen={isOpen7}
@@ -966,7 +943,20 @@ const RenderContent = () => {
                     >
                       <ModalOverlay />
                       <ModalContent>
-                        <ModalHeader>Claim LOV token</ModalHeader>
+                        <ModalHeader>
+                          <HStack>
+                            <Text>Claim LOV token</Text>
+
+                            <Tooltip
+                              label="You can claim LOV Tokens periodically in the amount of 100*Family Budget."
+                              fontSize="md"
+                              placement="right"
+                              shouldWrapChildren
+                            >
+                              <FcAbout />
+                            </Tooltip>
+                          </HStack>
+                        </ModalHeader>
                         <ModalCloseButton />
                         <ModalBody>
                           {!isLoading ? (
@@ -991,7 +981,9 @@ const RenderContent = () => {
                                       hour: "2-digit",
                                       minute: "2-digit",
                                       second: "2-digit",
-                                    }).format(lovBalancetimer * 1000 + 86400000)
+                                    }).format(
+                                      (lovBalancetimer + policyDays) * 1000
+                                    )
                                   : null}
                               </Text>
                             </Box>
@@ -1022,62 +1014,6 @@ const RenderContent = () => {
                   </MenuItem>
                 ) : null}
 
-                {familyStats.ProposalStatus === 4 &&
-                familyStats.DivorceStatus === 0 ? (
-                  <MenuItem onClick={onOpen2}>
-                    {" "}
-                    Initiate Divorce
-                    <Modal
-                      finalFocusRef={finalRef}
-                      isOpen={isOpen2}
-                      onClose={onClose2}
-                    >
-                      <ModalOverlay />
-                      <ModalContent>
-                        <ModalHeader>
-                          Are you sure you want to initiate Divorce?
-                        </ModalHeader>
-                        <ModalCloseButton />
-                        <ModalBody>
-                          {!isLoading ? (
-                            <Box>
-                              <Textarea
-                                value={message}
-                                onChange={(e) => setMessage(e.target.value)}
-                                placeholder="Include a note"
-                                size="sm"
-                              />
-                              <Text fontSize="sm" color="red.500">
-                                *If Divorce is accepted, the Family Stake will
-                                be split between partners.
-                              </Text>
-                            </Box>
-                          ) : (
-                            <Center>
-                              {" "}
-                              <Spinner
-                                thickness="4px"
-                                speed="0.65s"
-                                emptyColor="gray.200"
-                                color="blue.500"
-                                size="xl"
-                              />
-                            </Center>
-                          )}
-                        </ModalBody>
-
-                        <ModalFooter>
-                          <Button colorScheme="blue" mr={3} onClick={onClose2}>
-                            Close
-                          </Button>
-                          <Button variant="ghost" onClick={ProposeDivorce}>
-                            Proceed
-                          </Button>
-                        </ModalFooter>
-                      </ModalContent>
-                    </Modal>
-                  </MenuItem>
-                ) : null}
                 <MenuItem onClick={onOpen3}>
                   Transactions History
                   <Modal
@@ -1087,7 +1023,20 @@ const RenderContent = () => {
                   >
                     <ModalOverlay />
                     <ModalContent>
-                      <ModalHeader>Transaction History</ModalHeader>
+                      <ModalHeader>
+                        <HStack>
+                          <Text>Transaction History</Text>
+
+                          <Tooltip
+                            label="You can view your ETH Transaction History"
+                            fontSize="md"
+                            placement="right"
+                            shouldWrapChildren
+                          >
+                            <FcAbout />
+                          </Tooltip>
+                        </HStack>
+                      </ModalHeader>
                       <ModalCloseButton />
                       <ModalBody>
                         {!isLoading ? (
@@ -1167,51 +1116,22 @@ const RenderContent = () => {
                   <MenuItem onClick={onOpen8}>
                     {" "}
                     Mint your NFT
-                    <AlertDialog
-                      motionPreset="slideInBottom"
-                      leastDestructiveRef={cancelRef}
-                      onClose={onClose8}
-                      isOpen={isOpen8}
-                      isCentered
-                    >
-                      <AlertDialogOverlay />
-
-                      <AlertDialogContent>
-                        <AlertDialogHeader>Mint NFT?</AlertDialogHeader>
-                        <AlertDialogCloseButton />
-                        <AlertDialogBody>
-                          {!isLoading ? (
-                            <Box>
-                              Maximum NFT minting fee may amount up to 0.3 ETHs
-                              due to the Ethereum onchain storage. Do you agree?
-                            </Box>
-                          ) : (
-                            <Center>
-                              {" "}
-                              <Spinner
-                                thickness="4px"
-                                speed="0.65s"
-                                emptyColor="gray.200"
-                                color="blue.500"
-                                size="xl"
-                              />
-                            </Center>
-                          )}
-                        </AlertDialogBody>
-                        <AlertDialogFooter>
-                          <Button ref={cancelRef} onClick={onClose8}>
-                            No
-                          </Button>
-                          <Button
-                            colorScheme="green"
-                            ml={3}
-                            onClick={MintCertificate}
-                          >
-                            Yes
-                          </Button>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <Modal onClose={onClose8} size={"full"} isOpen={isOpen8}>
+                      <ModalOverlay />
+                      <ModalContent>
+                        <ModalHeader>Minting NFT menu</ModalHeader>
+                        <ModalCloseButton />
+                        <ModalBody>
+                          <NFTPricing
+                            gameContract={gameContract}
+                            setMintedNFT={setMintedNFT}
+                          />
+                        </ModalBody>
+                        <ModalFooter>
+                          <Button onClick={onClose8}>Close</Button>
+                        </ModalFooter>
+                      </ModalContent>
+                    </Modal>
                   </MenuItem>
                 ) : null}
 
@@ -1226,12 +1146,86 @@ const RenderContent = () => {
                     >
                       <ModalOverlay />
                       <ModalContent>
-                        <ModalHeader> Your NFT</ModalHeader>
+                        <ModalHeader>
+                          <HStack>
+                            <Text>Your NFT</Text>
+                          </HStack>
+                        </ModalHeader>
                         <ModalCloseButton />
                         <ModalBody>
                           {!isLoading ? (
                             <Box>
-                              <Image src={imageNFT.image} alt="Image NFT" />
+                              {imageNFT.image ? (
+                                <VStack spacing={4}>
+                                  <Image src={imageNFT.image} alt="Image NFT" />
+
+                                  <Text
+                                    fontSize="md"
+                                    color="blue.800"
+                                    fontWeight="bold"
+                                  >
+                                    Properties:
+                                  </Text>
+
+                                  <HStack spacing={6}>
+                                    <Box
+                                      p={4}
+                                      bg="blue.50"
+                                      fontWeight="bold"
+                                      borderRadius="md"
+                                      borderWidth="1px"
+                                      borderColor="blue.800"
+                                    >
+                                      <Text fontSize="xs" color="blue.300">
+                                        STATUS:
+                                      </Text>
+                                      <Text fontSize="sm" color="blue.800">
+                                        {imageNFT.attributes[1].value}
+                                      </Text>
+                                    </Box>
+
+                                    <Box
+                                      p={4}
+                                      bg="blue.50"
+                                      fontWeight="bold"
+                                      borderRadius="md"
+                                      borderWidth="1px"
+                                      borderColor="blue.800"
+                                    >
+                                      <Text fontSize="xs" color="blue.300">
+                                        STAKE:
+                                      </Text>
+                                      <Text fontSize="sm" color="blue.800">
+                                        {imageNFT.attributes[0].value}
+                                      </Text>
+                                    </Box>
+                                  </HStack>
+
+                                  <Link
+                                    href={`https://testnets.opensea.io/assets/${nftContractAddress}/${tokenURI}`}
+                                    p={2}
+                                    color="white"
+                                    fontWeight="bold"
+                                    borderRadius="xl"
+                                    borderWidth="2px"
+                                    maxW="md"
+                                    bgGradient="linear(to-r, teal.500, blue.500)"
+                                    isExternal
+                                    _hover={{
+                                      bgGradient:
+                                        "linear(to-r, red.500, yellow.500)",
+                                    }}
+                                  >
+                                    See your NFT in OpenSea
+                                    <ExternalLinkIcon mx="3px" />
+                                  </Link>
+                                </VStack>
+                              ) : (
+                                <Text>
+                                  Please load your NFT by clicking "Load NFT
+                                  Image"
+                                </Text>
+                              )}
                             </Box>
                           ) : (
                             <Center>
@@ -1259,149 +1253,309 @@ const RenderContent = () => {
                     </Modal>
                   </MenuItem>
                 ) : null}
-
                 {familyStats.ProposalStatus === 4 ? (
-                  <MenuItem onClick={onOpen5}>
+                  <MenuItem onClick={onOpen2} fontWeight="bold">
                     {" "}
-                    Voting
+                    Initiate Proposals
                     <Modal
                       finalFocusRef={finalRef}
-                      isOpen={isOpen5}
-                      onClose={onClose5}
+                      isOpen={isOpen2}
+                      onClose={onClose2}
+                      size={"xl"}
                     >
                       <ModalOverlay />
                       <ModalContent>
                         <ModalHeader>
-                          {" "}
-                          Your current balance: {lovBalance} LOVs
+                          Create Proposals Here. Your current balance:{" "}
+                          {lovBalance} LOVs
                         </ModalHeader>
                         <ModalCloseButton />
                         <ModalBody>
-                          {!isLoading ? (
-                            <Box>
-                              <FormControl>
-                                <Formik
-                                  initialValues={{
-                                    votetext: "",
-                                    voteEnds: "",
-                                    NumTokens: "",
-                                    name: "0x0000000000000000000000000000000000000000",
-                                    gift: "0",
-                                  }}
-                                  validate={validateWalletAddress}
-                                  onSubmit={(values, actions) => {
-                                    setTimeout(() => {
-                                      alert(JSON.stringify(values, null, 2));
-                                      actions.setSubmitting(false);
-                                    }, 1000);
-                                  }}
-                                >
-                                  {(props) => (
-                                    <Form>
-                                      <Field name="votetext">
-                                        {({ field, form }) => (
-                                          <FormControl
-                                            isInvalid={
-                                              form.errors.votetext &&
-                                              form.touched.votetext
-                                            }
-                                          >
-                                            <FormLabel htmlFor="votetext">
-                                              <Text
-                                                bgGradient="linear(to-r, green.500, green.800)"
-                                                bgClip="text"
-                                                fontSize="2xl"
-                                                fontWeight="bold"
-                                              >
-                                                Proposal text:
-                                              </Text>
-                                            </FormLabel>
-                                            <Input
-                                              {...field}
-                                              id="votetext"
-                                              placeholder="Max 200 symbols"
-                                            />
-                                            <FormErrorMessage>
-                                              {form.errors.votetext}
-                                            </FormErrorMessage>
-                                          </FormControl>
+                          <Tabs
+                            index={voteType}
+                            onChange={(index) => setvoteType(index)}
+                            isFitted
+                            variant="enclosed"
+                          >
+                            <TabList>
+                              <Tab>Vote Proposal</Tab>
+                              <Tab>Send from Family Budget</Tab>
+                              <Tab>Initiate Divorce</Tab>
+                            </TabList>
+                            <TabPanels>
+                              <TabPanel>
+                                {!isLoading ? (
+                                  <Box>
+                                    <FormControl>
+                                      <Formik
+                                        initialValues={{
+                                          votetext: "",
+                                          voteEnds: "",
+                                          NumTokens: "",
+                                          name: "0x0000000000000000000000000000000000000000",
+                                          gift: "0",
+                                        }}
+                                        validate={validateWalletAddress}
+                                        onSubmit={(values, actions) => {
+                                          setTimeout(() => {
+                                            alert(
+                                              JSON.stringify(values, null, 2)
+                                            );
+                                            actions.setSubmitting(false);
+                                          }, 1000);
+                                        }}
+                                      >
+                                        {(props) => (
+                                          <Form>
+                                            <Field name="votetext">
+                                              {({ field, form }) => (
+                                                <FormControl
+                                                  isInvalid={
+                                                    form.errors.votetext &&
+                                                    form.touched.votetext
+                                                  }
+                                                >
+                                                  <FormLabel htmlFor="votetext">
+                                                    <HStack>
+                                                      <Text
+                                                        bgGradient="linear(to-r, green.500, green.800)"
+                                                        bgClip="text"
+                                                        fontSize="2xl"
+                                                        fontWeight="bold"
+                                                      >
+                                                        Proposal text:
+                                                      </Text>
+
+                                                      <Tooltip
+                                                        label="This text will be shown in your Proposal Card."
+                                                        fontSize="md"
+                                                        placement="right"
+                                                        shouldWrapChildren
+                                                      >
+                                                        <FcAbout />
+                                                      </Tooltip>
+                                                    </HStack>
+                                                  </FormLabel>
+                                                  <Input
+                                                    {...field}
+                                                    id="votetext"
+                                                    placeholder="Max 200 symbols"
+                                                  />
+                                                  <FormErrorMessage>
+                                                    {form.errors.votetext}
+                                                  </FormErrorMessage>
+                                                </FormControl>
+                                              )}
+                                            </Field>
+
+                                            <Field name="voteEnds">
+                                              {({ field, form }) => (
+                                                <FormControl
+                                                  isInvalid={
+                                                    form.errors.voteEnds &&
+                                                    form.touched.voteEnds
+                                                  }
+                                                >
+                                                  <FormLabel htmlFor="voteEnds">
+                                                    <HStack>
+                                                      <Text
+                                                        bgGradient="linear(to-r, green.500, green.800)"
+                                                        bgClip="text"
+                                                        fontSize="2xl"
+                                                        fontWeight="bold"
+                                                      >
+                                                        Voting ends after this
+                                                        number of days:
+                                                      </Text>
+                                                      <Tooltip
+                                                        label="If there were no response to your proposal in allocated time you can pass your proposal due to timeout."
+                                                        fontSize="md"
+                                                        placement="right"
+                                                        shouldWrapChildren
+                                                      >
+                                                        <FcAbout />
+                                                      </Tooltip>
+                                                    </HStack>
+                                                  </FormLabel>
+
+                                                  <Input
+                                                    {...field}
+                                                    id="voteEnds"
+                                                    placeholder="Enter # in Days"
+                                                  />
+
+                                                  <FormErrorMessage>
+                                                    {form.errors.voteEnds}
+                                                  </FormErrorMessage>
+                                                </FormControl>
+                                              )}
+                                            </Field>
+
+                                            <Field name="NumTokens">
+                                              {({ field, form }) => (
+                                                <FormControl
+                                                  isInvalid={
+                                                    form.errors.NumTokens &&
+                                                    form.touched.NumTokens
+                                                  }
+                                                >
+                                                  <FormLabel htmlFor="NumTokens">
+                                                    <HStack>
+                                                      <Text
+                                                        bgGradient="linear(to-r, green.500, green.800)"
+                                                        bgClip="text"
+                                                        fontSize="2xl"
+                                                        fontWeight="bold"
+                                                      >
+                                                        Backed by LOV Tokens:
+                                                      </Text>
+
+                                                      <Tooltip
+                                                        label="LOV token will be used as a Bid. Responder can decline your proposal by providing higher Bid."
+                                                        fontSize="md"
+                                                        placement="right"
+                                                        shouldWrapChildren
+                                                      >
+                                                        <FcAbout />
+                                                      </Tooltip>
+                                                    </HStack>
+                                                  </FormLabel>
+                                                  <Input
+                                                    {...field}
+                                                    id="NumTokens"
+                                                    placeholder="# of LOV tokens to back your proposal"
+                                                  />
+                                                  <FormErrorMessage>
+                                                    {form.errors.NumTokens}
+                                                  </FormErrorMessage>
+                                                </FormControl>
+                                              )}
+                                            </Field>
+                                          </Form>
                                         )}
-                                      </Field>
+                                      </Formik>
+                                    </FormControl>
+                                  </Box>
+                                ) : (
+                                  <Center>
+                                    {" "}
+                                    <Spinner
+                                      thickness="4px"
+                                      speed="0.65s"
+                                      emptyColor="gray.200"
+                                      color="blue.500"
+                                      size="xl"
+                                    />
+                                  </Center>
+                                )}
+                              </TabPanel>
 
-                                      <Field name="voteEnds">
-                                        {({ field, form }) => (
-                                          <FormControl
-                                            isInvalid={
-                                              form.errors.voteEnds &&
-                                              form.touched.voteEnds
-                                            }
-                                          >
-                                            <FormLabel htmlFor="voteEnds">
-                                              <Text
-                                                bgGradient="linear(to-r, green.500, green.800)"
-                                                bgClip="text"
-                                                fontSize="2xl"
-                                                fontWeight="bold"
-                                              >
-                                                Voting ends after:
-                                              </Text>
-                                            </FormLabel>
+                              <TabPanel>
+                                {!isLoading ? (
+                                  <Box>
+                                    <FormControl>
+                                      <Formik
+                                        initialValues={{
+                                          votetext: "",
+                                          voteEnds: "0",
+                                          NumTokens: "",
+                                          name: "",
+                                          gift: "0",
+                                        }}
+                                        validate={validateWalletAddress}
+                                        onSubmit={(values, actions) => {
+                                          setTimeout(() => {
+                                            alert(
+                                              JSON.stringify(values, null, 2)
+                                            );
+                                            actions.setSubmitting(false);
+                                          }, 1000);
+                                        }}
+                                      >
+                                        {(props) => (
+                                          <Form>
+                                            <Field name="votetext">
+                                              {({ field, form }) => (
+                                                <FormControl
+                                                  isInvalid={
+                                                    form.errors.votetext &&
+                                                    form.touched.votetext
+                                                  }
+                                                >
+                                                  <FormLabel htmlFor="votetext">
+                                                    <HStack>
+                                                      <Text
+                                                        bgGradient="linear(to-r, green.500, green.800)"
+                                                        bgClip="text"
+                                                        fontSize="2xl"
+                                                        fontWeight="bold"
+                                                      >
+                                                        Proposal text:
+                                                      </Text>
 
-                                            <Input
-                                              {...field}
-                                              id="voteEnds"
-                                              placeholder="Enter # in Days"
-                                            />
+                                                      <Tooltip
+                                                        label="This text will be shown in your Proposal Card."
+                                                        fontSize="md"
+                                                        placement="right"
+                                                        shouldWrapChildren
+                                                      >
+                                                        <FcAbout />
+                                                      </Tooltip>
+                                                    </HStack>
+                                                  </FormLabel>
+                                                  <Input
+                                                    {...field}
+                                                    id="votetext"
+                                                    placeholder="Max 200 symbols"
+                                                  />
+                                                  <FormErrorMessage>
+                                                    {form.errors.votetext}
+                                                  </FormErrorMessage>
+                                                </FormControl>
+                                              )}
+                                            </Field>
 
-                                            <FormErrorMessage>
-                                              {form.errors.voteEnds}
-                                            </FormErrorMessage>
-                                          </FormControl>
-                                        )}
-                                      </Field>
+                                            <Field name="NumTokens">
+                                              {({ field, form }) => (
+                                                <FormControl
+                                                  isInvalid={
+                                                    form.errors.NumTokens &&
+                                                    form.touched.NumTokens
+                                                  }
+                                                >
+                                                  <FormLabel htmlFor="NumTokens">
+                                                    <HStack>
+                                                      <Text
+                                                        bgGradient="linear(to-r, green.500, green.800)"
+                                                        bgClip="text"
+                                                        fontSize="2xl"
+                                                        fontWeight="bold"
+                                                      >
+                                                        Backed by LOV Tokens:
+                                                      </Text>
 
-                                      <Field name="NumTokens">
-                                        {({ field, form }) => (
-                                          <FormControl
-                                            isInvalid={
-                                              form.errors.NumTokens &&
-                                              form.touched.NumTokens
-                                            }
-                                          >
-                                            <FormLabel htmlFor="NumTokens">
-                                              <Text
-                                                bgGradient="linear(to-r, green.500, green.800)"
-                                                bgClip="text"
-                                                fontSize="2xl"
-                                                fontWeight="bold"
-                                              >
-                                                Backed by LOV Tokens:
-                                              </Text>
-                                            </FormLabel>
-                                            <Input
-                                              {...field}
-                                              id="NumTokens"
-                                              placeholder="# of LOV tokens to back your proposal"
-                                            />
-                                            <FormErrorMessage>
-                                              {form.errors.NumTokens}
-                                            </FormErrorMessage>
-                                          </FormControl>
-                                        )}
-                                      </Field>
+                                                      <Tooltip
+                                                        label="LOV token will be used as a Bid. Responder can decline your proposal by providing a Bid that is higher than your Bid in square root. Financial proposals are easier to vote against."
+                                                        fontSize="md"
+                                                        placement="right"
+                                                        shouldWrapChildren
+                                                      >
+                                                        <FcAbout />
+                                                      </Tooltip>
+                                                    </HStack>
+                                                  </FormLabel>
+                                                  <Input
+                                                    {...field}
+                                                    id="NumTokens"
+                                                    placeholder="# of LOV tokens to back your proposal"
+                                                  />
+                                                  <FormErrorMessage>
+                                                    {form.errors.NumTokens}
+                                                  </FormErrorMessage>
+                                                </FormControl>
+                                              )}
+                                            </Field>
 
-                                      <Accordion allowToggle>
-                                        <AccordionItem>
-                                          <h2>
-                                            <AccordionButton>
-                                              <Box flex="1" textAlign="left">
-                                                Send funds from the Family
-                                                Budget
-                                              </Box>
-                                              <AccordionIcon />
-                                            </AccordionButton>
-                                          </h2>
-                                          <AccordionPanel pb={4}>
                                             <Field name="name">
                                               {({ field, form }) => (
                                                 <FormControl
@@ -1411,13 +1565,23 @@ const RenderContent = () => {
                                                   }
                                                 >
                                                   <FormLabel htmlFor="name">
-                                                    <Text
-                                                      bgGradient="linear(to-r, green.500, green.800)"
-                                                      bgClip="text"
-                                                      fontSize="2xl"
-                                                    >
-                                                      Enter Wallet Address
-                                                    </Text>
+                                                    <HStack>
+                                                      <Text
+                                                        bgGradient="linear(to-r, green.500, green.800)"
+                                                        bgClip="text"
+                                                        fontSize="2xl"
+                                                      >
+                                                        Enter Wallet Address
+                                                      </Text>
+                                                      <Tooltip
+                                                        label="Provide non ENS Wallet Address. The specified amount will be sent to this address from the Family Budget."
+                                                        fontSize="md"
+                                                        placement="right"
+                                                        shouldWrapChildren
+                                                      >
+                                                        <FcAbout />
+                                                      </Tooltip>
+                                                    </HStack>
                                                   </FormLabel>
                                                   <Input
                                                     {...field}
@@ -1440,13 +1604,25 @@ const RenderContent = () => {
                                                   }
                                                 >
                                                   <FormLabel htmlFor="gift">
-                                                    <Text
-                                                      bgGradient="linear(to-r, green.500, green.800)"
-                                                      bgClip="text"
-                                                      fontSize="2xl"
-                                                    >
-                                                      Amount to be sent
-                                                    </Text>
+                                                    <HStack>
+                                                      <Text
+                                                        bgGradient="linear(to-r, green.500, green.800)"
+                                                        bgClip="text"
+                                                        fontSize="2xl"
+                                                      >
+                                                        Amount to be sent in{" "}
+                                                        {currency}
+                                                      </Text>
+
+                                                      <Tooltip
+                                                        label="Specified amount will be sent from the Family Budget if proposal is accepted. This should not exceed your Family Budget."
+                                                        fontSize="md"
+                                                        placement="right"
+                                                        shouldWrapChildren
+                                                      >
+                                                        <FcAbout />
+                                                      </Tooltip>
+                                                    </HStack>
                                                   </FormLabel>
                                                   <Input
                                                     {...field}
@@ -1456,36 +1632,136 @@ const RenderContent = () => {
                                                   <FormErrorMessage>
                                                     {form.errors.gift}
                                                   </FormErrorMessage>
+                                                  <Text
+                                                    color="blue"
+                                                    fontSize="1xl"
+                                                  >
+                                                    * You can pass your proposal
+                                                    if there were no response in{" "}
+                                                    {policyDays} Days.
+                                                  </Text>
                                                 </FormControl>
                                               )}
                                             </Field>
-                                          </AccordionPanel>
-                                        </AccordionItem>
-                                      </Accordion>
-                                    </Form>
-                                  )}
-                                </Formik>
-                              </FormControl>
-                            </Box>
-                          ) : (
-                            <Center>
-                              {" "}
-                              <Spinner
-                                thickness="4px"
-                                speed="0.65s"
-                                emptyColor="gray.200"
-                                color="blue.500"
-                                size="xl"
-                              />
-                            </Center>
-                          )}
+                                          </Form>
+                                        )}
+                                      </Formik>
+                                    </FormControl>
+                                  </Box>
+                                ) : (
+                                  <Center>
+                                    {" "}
+                                    <Spinner
+                                      thickness="4px"
+                                      speed="0.65s"
+                                      emptyColor="gray.200"
+                                      color="blue.500"
+                                      size="xl"
+                                    />
+                                  </Center>
+                                )}
+                              </TabPanel>
+
+                              <TabPanel>
+                                {!isLoading ? (
+                                  <Box>
+                                    <FormControl>
+                                      <Formik
+                                        initialValues={{
+                                          votetext: "",
+                                          voteEnds: "0",
+                                          NumTokens: "0",
+                                          name: "0x0000000000000000000000000000000000000000",
+                                          gift: "0",
+                                        }}
+                                        validate={validateWalletAddress}
+                                        onSubmit={(values, actions) => {
+                                          setTimeout(() => {
+                                            alert(
+                                              JSON.stringify(values, null, 2)
+                                            );
+                                            actions.setSubmitting(false);
+                                          }, 1000);
+                                        }}
+                                      >
+                                        {(props) => (
+                                          <Form>
+                                            <Field name="votetext">
+                                              {({ field, form }) => (
+                                                <FormControl
+                                                  isInvalid={
+                                                    form.errors.votetext &&
+                                                    form.touched.votetext
+                                                  }
+                                                >
+                                                  <FormLabel htmlFor="votetext">
+                                                    <HStack>
+                                                      <Text
+                                                        bgGradient="linear(to-r, green.500, green.800)"
+                                                        bgClip="text"
+                                                        fontSize="2xl"
+                                                        fontWeight="bold"
+                                                      >
+                                                        Proposal text:
+                                                      </Text>
+
+                                                      <Tooltip
+                                                        label="This text will be shown in your Proposal Card."
+                                                        fontSize="md"
+                                                        placement="right"
+                                                        shouldWrapChildren
+                                                      >
+                                                        <FcAbout />
+                                                      </Tooltip>
+                                                    </HStack>
+                                                  </FormLabel>
+                                                  <Input
+                                                    {...field}
+                                                    id="votetext"
+                                                    placeholder="Max 200 symbols"
+                                                  />
+                                                  <FormErrorMessage>
+                                                    {form.errors.votetext}
+                                                  </FormErrorMessage>
+                                                  <Text
+                                                    color="blue"
+                                                    fontSize="1xl"
+                                                  >
+                                                    * You can pass your proposal
+                                                    if there were no response in{" "}
+                                                    {policyDays} Days.
+                                                  </Text>
+                                                </FormControl>
+                                              )}
+                                            </Field>
+                                          </Form>
+                                        )}
+                                      </Formik>
+                                    </FormControl>
+                                  </Box>
+                                ) : (
+                                  <Center>
+                                    {" "}
+                                    <Spinner
+                                      thickness="4px"
+                                      speed="0.65s"
+                                      emptyColor="gray.200"
+                                      color="blue.500"
+                                      size="xl"
+                                    />
+                                  </Center>
+                                )}
+                              </TabPanel>
+                            </TabPanels>
+                          </Tabs>
                         </ModalBody>
+
                         <ModalFooter>
-                          <Button mr={3} variant="ghost" onClick={onClose5}>
+                          <Button colorScheme="blue" mr={3} onClick={onClose2}>
                             Close
                           </Button>
-                          <Button colorScheme="blue" onClick={createProposal}>
-                            Create Vote Proposal
+                          <Button variant="ghost" onClick={createProposal}>
+                            Proceed
                           </Button>
                         </ModalFooter>
                       </ModalContent>

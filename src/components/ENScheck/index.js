@@ -1,4 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { 
+    FcAbout,
+  } from 'react-icons/fc';
+  
 
 import {
     Text,
@@ -9,7 +13,8 @@ import {
     Stack,
     createStandaloneToast,
     Center,
-    Spinner
+    Spinner,
+    Tooltip
 
   } from '@chakra-ui/react'
 
@@ -60,13 +65,11 @@ const ENSname = async () => {
 
 
 useEffect(() => {
-    let isMounted = true;
-    if(isMounted ){
-    ENSname(); }
-
-    return () => {
-        isMounted = false;
-        };
+    
+    if (hasENS) {
+        ENSname(); 
+    }
+   
     
   // eslint-disable-next-line 
     }, [currentAccount]);
@@ -90,6 +93,9 @@ useEffect(() => {
            <Text>
            Do you want to show your ENS in your NFT Certificate?
         </Text>
+        <Tooltip label='Your ENS name will be shown in your NFT Certificate once minted. If you opt out then your truncated wallet address will be displayed in NFT.' fontSize='md' placement='right' shouldWrapChildren>
+                <FcAbout/>
+        </Tooltip>
         <RadioGroup onChange={sethasENS} value={hasENS}>
           <Stack direction='row' spacing={5}>
             <Radio value='1'>Yes</Radio>

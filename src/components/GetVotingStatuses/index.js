@@ -3,7 +3,11 @@ import { FcInfo,
     FcApproval,
     FcDisapprove,
     FcCancel,
-    FcPaid
+    FcPaid,
+    FcExpired,
+    FcHighPriority,
+    FcIdea,
+    FcMoneyTransfer
  } from 'react-icons/fc';
 
 
@@ -20,15 +24,15 @@ import {
     ModalBody,
     ModalCloseButton, 
     useDisclosure,
-    NumberInput,
-    NumberInputField,
-    NumberInputStepper,
-    NumberIncrementStepper,
-    NumberDecrementStepper,
+   
     createStandaloneToast,
     Spinner,
     Center,
-    Tooltip
+    Tooltip,
+    Slider,
+    SliderTrack,
+    SliderFilledTrack,
+    SliderThumb
 
   } from '@chakra-ui/react'
 
@@ -37,10 +41,17 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
     const [votingData, setvotingData] = useState ([])
     const [lovValue, setlovValue] = useState (0);
     const { isOpen, onOpen, onClose } = useDisclosure();
+
+    const { 
+        isOpen: isOpen2, 
+        onOpen: onOpen2, 
+        onClose: onClose2 
+      } = useDisclosure()
+
     const toast = createStandaloneToast()
     const [lovBalance, setlovBalance] = useState();
 
-    const [isLoading, setIsLoading] = useState(false);
+   
 
 
     const fetchVotingMetadata = async () => {
@@ -58,6 +69,7 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                 id: names.id.toNumber(),
                 proposer: names.proposer,
                 responder: names.responder,
+                voteType: names.voteType,
                 tokenVoteQuantity: names.tokenVoteQuantity,
                 voteProposalText: names.voteProposalText,
                 voteStatus: names.voteStatus,
@@ -134,8 +146,7 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
 
 
         const agreeVoting = async (_id) => {
-            setIsLoading(true);
-
+            onOpen2();
            console.log(_id)
             try {
                 const waveTxn = await gameContract.agreeVoting(_id);
@@ -154,7 +165,7 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                     isClosable: true,
                   })
               }
-              setIsLoading(false);
+              onClose2();
           };
 
 
@@ -178,7 +189,7 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
         }
 
           const cancelVoting = async (_id) => {
-            setIsLoading(true);
+            onOpen2();
 
             console.log(_id)
              try {
@@ -197,11 +208,11 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                     isClosable: true,
                   })
                }
-               setIsLoading(false);
+               onClose2();
            };
 
            const disagreeVoting = async (_id) => {
-            setIsLoading(true);
+            onOpen2();
             console.log(_id)
              try {
                  const waveTxn = await gameContract.disagreeVoting(_id,lovValue);
@@ -221,12 +232,12 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                     isClosable: true,
                   })
                }
-               setIsLoading(false);
+               onClose2();
                
            };
 
            const endVotingByTime = async (_id) => {
-            setIsLoading(true);
+            onOpen2();
 
             console.log(_id)
              try {
@@ -245,15 +256,15 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                     isClosable: true,
                   })
                }
-               setIsLoading(false);
+               onClose2();
            };
            
-           const executeTransfer = async (_id) => {
-            setIsLoading(true);
+           const executeVoting = async (_id) => {
+            onOpen2();
 
             console.log(_id)
              try {
-                 const waveTxn = await gameContract.executeTransfer(_id);
+                 const waveTxn = await gameContract.executeVoting(_id);
                  console.log("Mining...", waveTxn.hash);
                  await waveTxn.wait();
                  console.log("Mined -- ", waveTxn.hash);
@@ -268,20 +279,12 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                     isClosable: true,
                   })
                }
-               setIsLoading(false);
+               onClose2();
            };
 
     const renderMints = () => {
 
-        if (isLoading) {return <Center> <Spinner
-            thickness='4px'
-            speed='0.65s'
-            emptyColor='gray.200'
-            color='blue.500'
-            size='xl'
-            
-          /></Center>}
-     
+        
         if (currentAccount && votingData.length > 0) {
             return (
         <Box>
@@ -297,8 +300,32 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                                     <Stack p="4" boxShadow="lg" m="4" borderRadius="sm" key = {index} >
                                             <Stack direction="row" alignItems="center" >
                                                 <Text fontWeight="semibold">Proposal #{votingData.length - index}</Text>
+                                                { mint.voteType === 1 ?(
+                                                    <Tooltip label='Idea' fontSize='md' placement='right' shouldWrapChildren>
+                                                    <FcIdea/>
+                                                    </Tooltip>
+                                                    )
+                                                : null
+                                                }
+                                                { mint.voteType === 2 ?(
+                                                    <Tooltip label='Money Transfer' fontSize='md' placement='right' shouldWrapChildren>
+                                                    <FcMoneyTransfer/>
+                                                    </Tooltip>
+                                                    )
+                                                : null
+                                                }
+                                                { mint.voteType === 3 ?(
+                                                    <Tooltip label='Divorce!' fontSize='md' placement='right' shouldWrapChildren>
+                                                    <FcHighPriority/>
+                                                    </Tooltip>
+                                                    )
+                                                : null
+                                                }
+                                                
                                                 { mint.voteStatus === 1 ?(
+                                                    <Tooltip label='Proposal Initiated' fontSize='md' placement='right' shouldWrapChildren>
                                                     <FcInfo/>
+                                                    </Tooltip>
                                                     )
                                                 : null
                                                 }
@@ -330,18 +357,29 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                                                     )
                                                 : null
                                                 }
+                                                { (mint.timestamp + mint.voteends)*1000 < Date.now() && mint.voteStatus === 1 ?(
+                                                     <Tooltip label='Voting Expired' fontSize='md' placement='right' shouldWrapChildren>
+                
+                                                    <FcExpired/>
+                                                    </Tooltip>
+                                                    )
+                                                : null
+                                                }
+
+
+
                                             </Stack>
 
                                             <Stack
                                                 direction={{ base: 'column', md: 'column' }}
                                                 justifyContent="space-between">
                                                 <Stack>
-                                                <Text color = "green.500"
+                                                <Text color = "blue.500"
                                                 fontWeight="bold" fontSize={{ base: 'md' }} textAlign={'left'} maxW={'4xl'}>
                                                 {mint.voteProposalText}
 
                                                 </Text>
-                                                { mint.amount > 0 ?(
+                                                { mint.voteType === 2 ?(
                                                     <Stack>
                                                     <Text fontSize={{ base: 'sm' }} textAlign={'left'} maxW={'4xl'}>
                                                     Amount to be transferred from the family budget: {mint.amount/1000000000} ETH
@@ -357,7 +395,6 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                                                 Vote ends: {Intl.DateTimeFormat('en-US', {year: 'numeric', month: '2-digit',day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'}).format((mint.timestamp+mint.voteends)*1000)} 
                                                 </Text>
                                                 
-
                                                 </Stack>
                                                 
                                                 { mint.responder.toLowerCase() === currentAccount.toLowerCase() && mint.voteStatus === 1 ?(
@@ -368,26 +405,42 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                                                 <Modal blockScrollOnMount={false} isOpen={isOpen} onClose={onClose}>
                                                     <ModalOverlay />
                                                     <ModalContent>
-                                                    <ModalHeader>Decline vote proposal # {votingData.length-index}</ModalHeader>
+                                                    <ModalHeader>Decline proposal. </ModalHeader>
                                                     <ModalCloseButton />
                                                     <ModalBody>
-                                                        <Text fontWeight='bold' mb='1rem'>
-                                                        You need to overbid with your LOV tokens to decline the proposal.
+                                                    <Text fontWeight='bold' mb='1rem' color = 'blue.500'>
+                                                    Your Balance: {lovBalance} LOV Tokens
                                                         </Text>
-                                                        <NumberInput
-                                                            onChange={(e) => setlovValue((e))}
-                                                            value={lovValue}
-                                                        >
-                                                            <NumberInputField />
-                                                            <NumberInputStepper>
-                                                            <NumberIncrementStepper />
-                                                            <NumberDecrementStepper />
-                                                            </NumberInputStepper>
-                                                        </NumberInput>
+                                                     
+                                                            <Box>
+                                                        <Text fontWeight='bold' mb='1rem' color = 'blue.500'>
+                                                         Select LOV tokens:
+                                                        </Text>
+
+                                                        <Slider
+                                                                    flex='1'
+                                                                    focusThumbOnChange={false}
+                                                                    value={lovValue}
+                                                                    onChange={(e) => setlovValue((e))}
+                                                                    max={lovBalance} 
+                                                                >
+                                                                    <SliderTrack>
+                                                                    <SliderFilledTrack />
+                                                                    </SliderTrack>
+                                                                    <SliderThumb fontSize='sm' boxSize='32px' children={lovValue} />
+                                                                </Slider>
+
+                                                                <Text mb='1rem' color = 'red'>
+                                                                *You need to overbid with your LOV tokens to decline the proposal.
+                                                                </Text>
+
+                                                               
+                                                        </Box>
+                                                       
                                                     </ModalBody>
 
                                                     <ModalFooter>
-                                                        <Button colorScheme='green' mr={3} onClick={onClose}>
+                                                        <Button colorScheme='blue' mr={3} onClick={onClose}>
                                                         Close
                                                         </Button>
                                                         <Button variant='ghost' onClick={()=>{disagreeVoting(mint.id);}} >Decline</Button>
@@ -411,7 +464,7 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                                                    
                                                     <Stack direction={{ base: 'column', md: 'row' }}>
                                                 <Button variant="outline" colorScheme="green" onClick={()=>{endVotingByTime(mint.id);}}>
-                                                    End voting by deadline
+                                                   Accept proposal due to expiration.
                                                 </Button>
                                                 
                                                 </Stack>)
@@ -421,13 +474,13 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
                                                 </Stack>)
                                                 : null
                                                 }
-                                                { mint.proposer.toLowerCase() === currentAccount.toLowerCase() &&
+                                                { 
                                                  mint.voteStatus === 2 &&
-                                                  mint.amount>0 ? (
+                                                  mint.voteType !==1 ? (
                                                    
                                                     <Stack direction={{ base: 'column', md: 'row' }}>
-                                                <Button variant="outline" colorScheme="green" onClick={()=>{executeTransfer(mint.id);}}>
-                                                    Execute transfer
+                                                <Button variant="outline" colorScheme="green" onClick={()=>{executeVoting(mint.id);}}>
+                                                    Finalize Proposal
                                                 </Button>
         
                                                 </Stack>)
@@ -447,7 +500,29 @@ const GetVotingStatuses = ({gameContract, currentAccount,waver,proposed}) => {
 
 return (
     <Box>
-
+<Modal isCentered isOpen={isOpen2} onClose={onClose2}>
+        <ModalOverlay
+          bg='blackAlpha.300'
+          backdropFilter='blur(10px) hue-rotate(90deg)'
+        />
+        <ModalContent>
+          <ModalHeader> Transaction in process...</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+          <Center> <Spinner
+                  thickness='4px'
+                  speed='0.65s'
+                  emptyColor='gray.200'
+                  color='blue.500'
+                  size='xl'
+                  
+                /></Center>
+          </ModalBody>
+          <ModalFooter>
+            <Button onClick={onClose2}>Close</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 {renderMints()}
 
     </Box>

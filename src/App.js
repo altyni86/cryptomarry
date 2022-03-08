@@ -27,7 +27,7 @@ function App() {
   const {
     ethRequestCurrentAccount, currentAccount,
     chainID, familyStats, setfamilyStats, 
-    setchainID
+    setchainID, setMintedNFT, minted
   } = useContext(mainContext);
 
   const toast = createStandaloneToast();
@@ -125,6 +125,28 @@ function App() {
     checkIfWalletIsConnected();
   }, []);
 
+  const checkNFT= async (waver,proposed) => {
+  
+    console.log('Checking NFT for', currentAccount);
+  
+    try {
+    const txn = await gameContract.nftminted(waver,proposed);
+    console.log("NFT Status ", txn)
+    setMintedNFT (txn)
+  
+  } catch (error) {
+    console.log(error)
+    toast({
+      title: `${error.message}`,
+      description: 'Transaction has not been completed',
+      status: 'warning',
+      duration: 9000,
+      isClosable: true,
+    })
+  }
+  
+  }
+
   useEffect(() => {
     const onNewWave = async (
       id, waver,
@@ -215,12 +237,18 @@ function App() {
     };
 
     if (gameContract) {
+
       /*
        * Setup NFT Minted Listener
        */
       gameContract.on("NewWave", onNewWave);
       gameContract.on("AddStake", onsendingStake);
     }
+
+    if (familyStats && familyStats.ProposalStatus!==0) {
+      checkNFT(familyStats.waver,familyStats.proposed);
+    }
+  
 
     return () => {
       /*

@@ -6,6 +6,7 @@ const INIT_STATE = {
     currency: '',
     ContractAddress: '',
     gameContract: null,
+    nftContractAddress: ''
 }
 
 const reducer = (state = INIT_STATE, action) => {
@@ -31,6 +32,7 @@ const ContractContextProvider = ({children}) => {
                 currency: 'lETH'
               }
           })
+          setnftContractAddress('0x1ef0ffb134e801e7Fc9d11d0620f093Dd7358320')
         }else if (chainId === "0x89") {
           
           dispatch({
@@ -39,7 +41,8 @@ const ContractContextProvider = ({children}) => {
                 ContractAddress: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0',
                 currency: 'MATIC'
             }
-        })
+          })
+          setnftContractAddress('0x1ef0ffb134e801e7Fc9d11d0620f093Dd7358320')
         } else if (chainId === "0x1") {
           
           dispatch({
@@ -49,17 +52,25 @@ const ContractContextProvider = ({children}) => {
                 currency: 'ETH'
             }
         })
-      
+        setnftContractAddress('0x1ef0ffb134e801e7Fc9d11d0620f093Dd7358320')
         } else if (chainId === "0x4") {
           
           dispatch({
             type: 'SET_CURRENCY',
             payload: {
-                ContractAddress: '0x5790196def19E1f17fdE23893e4B4c9708b86ce9',
+                ContractAddress: '0x7b8554aCeE6aE7D39d936CB8617d68E316a502A9',
                 currency: 'rETH'
             }
         })
+        setnftContractAddress('0x1ef0ffb134e801e7Fc9d11d0620f093Dd7358320')
       } 
+      }
+
+      function setnftContractAddress(arg){
+        dispatch({
+            type: 'SET_NFT_CONTRACT_ADDRESS',
+            payload: arg
+        })
       }
 
       function setContractAddress(address) {
@@ -82,7 +93,8 @@ const ContractContextProvider = ({children}) => {
         ContractAddress: state.ContractAddress,
         gameContract: state.gameContract,
         setGameContract,
-        currency: state.currency
+        currency: state.currency,
+        nftContractAddress: state.nftContractAddress
     }
     console.log(state, ' contract context')
     return (
